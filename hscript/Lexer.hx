@@ -262,7 +262,7 @@ class Lexer {
                 case 48,49,50,51,52,53,54,55,56,57: // 0...9
                 	var n:Int = charCode - 48;
 				    var exp:Float = 0;
-                    while(true) {
+                    while (true) {
                         charCode = readCharacter();
                         exp *= 10;
                         switch (charCode) {
@@ -291,7 +291,7 @@ class Lexer {
                                     if (exp == 10 && charCode == ".".code) {
                                         push(LTOp(INTERVAL));
                                         var i:Int = Std.int(n);
-                                        return LTConst( (i == n) ? LCInt(i) : LCFloat(n));
+                                        return LTConst((i == n) ? LCInt(i) : LCFloat(n));
                                     }
                                     invalidChar(charCode);
                                 }
@@ -301,7 +301,7 @@ class Lexer {
                                     invalidChar(charCode);
                                 
                                 var hexa:Int = 0;
-                                while( true ) { // read hexa
+                                while (true) { // read hexa
                                     charCode = readCharacter();
                                     switch(charCode) {
                                         case 48,49,50,51,52,53,54,55,56,57: hexa = (hexa << 4) + charCode - 48; // 0...9
@@ -395,7 +395,7 @@ class Lexer {
                 default: 
                     if (OPERATOR_CHARS_LOOKUP[charCode]) {
                         var op:String = String.fromCharCode(charCode);
-                        while( true ) {
+                        while (true) {
                             charCode = readCharacter();
                             if (StringTools.isEof(charCode)) charCode = 0;
                             if (!OPERATOR_CHARS_LOOKUP[charCode]) {
@@ -416,7 +416,7 @@ class Lexer {
                     }
                     if (IDENTIFIER_CHARS_LOOKUP[charCode]) {
                         var id = String.fromCharCode(charCode);
-                        while( true ) {
+                        while (true) {
                             charCode = readCharacter();
                             if (StringTools.isEof(charCode)) charCode = 0;
                             if (!IDENTIFIER_CHARS_LOOKUP[charCode]) {
