@@ -386,7 +386,7 @@ class Lexer {
                             charCode = readCharacter();
                             if (!IDENTIFIER_CHARS_LOOKUP[charCode]) {
                                 this.charCode = charCode;
-                                return preprocess(id);
+                                return LTPrepro(id);
                             }
                             id += String.fromCharCode(charCode);
                         }
@@ -544,10 +544,6 @@ class Lexer {
 		this.charCode = charCode;
 		return LTOp(op);
 	}
-
-    inline function preprocess(id) {
-        return null;
-    }
 
     inline function invalidChar(c) {
         error(EInvalidChar(c), character-1, character-1);
