@@ -226,7 +226,7 @@ class Lexer {
 
         while (true) {
 			var ltoken:LToken = token();
-			if(ltoken == LTEof) break;
+			if (ltoken == LTEof) break;
             push(ltoken);
         }
 
@@ -242,7 +242,7 @@ class Lexer {
 
     private function native_token() {
         var charCode:Int;
-		if(this.charCode < 0)
+		if (this.charCode < 0)
 			charCode = readCharacter();
 		else {
 			charCode = this.charCode;
@@ -250,7 +250,7 @@ class Lexer {
 		}
 
         while (true) {
-            if(StringTools.isEof(charCode)) {
+            if (StringTools.isEof(charCode)) {
                 this.charCode = charCode;
                 return LTEof;
             }
@@ -281,14 +281,14 @@ class Lexer {
                                         }
                                     default: push(token);
                                 }
-                                if(pow == null) invalidChar(charCode);
-                                if(exp == 0) exp = 10;
+                                if (pow == null) invalidChar(charCode);
+                                if (exp == 0) exp = 10;
 
                                 return LTConst(LCFloat((Math.pow(10, pow) / exp) * n * 10));
                             case ".".code:
-                                if(exp > 0) { // in case of '0...'
+                                if (exp > 0) { // in case of '0...'
                                     charCode = readCharacter();
-                                    if(exp == 10 && charCode == ".".code) {
+                                    if (exp == 10 && charCode == ".".code) {
                                         push(LTOp(INTERVAL));
                                         var i:Int = Std.int(n);
                                         return LTConst( (i == n) ? LCInt(i) : LCFloat(n));
@@ -297,7 +297,7 @@ class Lexer {
                                 }
 						        exp = 1;
                             case "x".code:
-                                if(n > 0 || exp > 0)
+                                if (n > 0 || exp > 0)
                                     invalidChar(charCode);
                                 
                                 var hexa:Int = 0;
@@ -345,7 +345,7 @@ class Lexer {
                             }
                         case ".".code:
                             charCode = readCharacter();
-                            if(charCode != ".".code)
+                            if (charCode != ".".code)
                                 invalidChar(charCode);
                             return LTOp(INTERVAL);
                         default:
@@ -503,7 +503,7 @@ class Lexer {
     inline function comment(op:String, charCode:Int) {
 		var secondCharCode:Int = op.charCodeAt(1);
 
-		if(secondCharCode == '/'.code) { // comment
+		if (secondCharCode == '/'.code) { // comment
 			while (charCode != '\r'.code && charCode != '\n'.code) {
 				charCode = readCharacter();
 				if (StringTools.isEof(charCode)) break;
