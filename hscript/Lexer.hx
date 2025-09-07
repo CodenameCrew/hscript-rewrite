@@ -55,6 +55,7 @@ enum abstract LOp(String) from String to String {
     var BOR:LOp = "||";
     var BAND:LOp = "&&";
     var IS:LOp = "is";
+    var NCOAL:LOp = "??";
 
     var INTERVAL:LOp = "...";
     var ARROW:LOp = "=>";
@@ -93,18 +94,18 @@ enum abstract LOp(String) from String to String {
         [INTERVAL],
         [BAND],
         [BOR],
-        [
+        [ // compound assignment
             ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
             SHL_ASSIGN, SHR_ASSIGN, USHR_ASSIGN, OR_ASSIGN, AND_ASSIGN, XOR_ASSIGN, ARROW
         ],
-        [FUNCTION_ARROW],
+        [FUNCTION_ARROW, NCOAL],
         [IS]
     ];
 
     public static final OP_PRECEDENCE_LEFT_LOOKUP:StringMap<Int> = {
         var LOOKUP_MAP:StringMap<Int> = new StringMap<Int>();
 
-        for (i in 0...8) // before compound assignment is left 
+        for (i in 0...9) // before compound assignment is left 
 			for (x in OP_PRECEDENCE[i]) LOOKUP_MAP.set(x, i);
 
         LOOKUP_MAP;
@@ -258,7 +259,7 @@ class Lexer {
             switch (charCode) {
                 case 0: return LTEof;
                 case " ".code, "\t".code, 13: tokenMin++; // space, tab, cr
-                case "\n".code: line++; tokenMin++; // lf
+                case "\n".code: line++; tokenMin++; // line end
                 case 48,49,50,51,52,53,54,55,56,57: // 0...9
                 	var n:Int = charCode - 48;
 				    var exp:Float = 0;
