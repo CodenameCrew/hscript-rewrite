@@ -13,7 +13,7 @@ typedef Expr = {
 /**
  * EInfo will ALWAYS be the first expr.
  * It allows us to use a array instead of a map for varaible storage
- * MUCH much faster and cool beans >:D
+ * MUCH much faster (supported in hscript-improved with INT_VARS compilier flag, default only option here)
  * 
  * See VariableType and VariableInfo
  */
@@ -50,9 +50,9 @@ enum ExprDef {
 }
 
 typedef Argument = {
-    name:String,
-    ?opt:Bool,
-    ?value:Expr
+    var name:String;
+    var ?opt:Bool;
+    var ?value:Expr;
 };
 
 enum EBinop {
