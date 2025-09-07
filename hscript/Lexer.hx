@@ -75,6 +75,7 @@ enum abstract LOp(String) from String to String {
     var OR_ASSIGN:LOp = "|=";
     var AND_ASSIGN:LOp = "&=";
     var XOR_ASSIGN:LOp = "^=";
+    var NCOAL_ASSIGN:LOp = "??=";
 
     var COMMENT:LOp = "//";
     var COMMENT_OPEN:LOp = "/*";
@@ -95,7 +96,7 @@ enum abstract LOp(String) from String to String {
         [BAND],
         [BOR],
         [ // compound assignment
-            ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+            ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, NCOAL_ASSIGN,
             SHL_ASSIGN, SHR_ASSIGN, USHR_ASSIGN, OR_ASSIGN, AND_ASSIGN, XOR_ASSIGN, ARROW
         ],
         [FUNCTION_ARROW, NCOAL],
