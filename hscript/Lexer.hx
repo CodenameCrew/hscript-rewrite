@@ -237,12 +237,12 @@ class Lexer {
 
     private function token() {
 		tokenMin = (this.charCode < 0) ? this.character : this.character - 1;
-		var ltoken = native_token();
+		var ltoken = nativeToken();
 		tokenMax = (this.charCode < 0) ? this.character - 1 : this.character - 2;
 		return ltoken;
     }
 
-    private function native_token() {
+    private function nativeToken() {
         var charCode:Int;
 		if (this.charCode < 0)
 			charCode = readCharacter();

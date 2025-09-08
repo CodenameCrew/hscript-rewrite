@@ -1,0 +1,6 @@
+build.hxml
+--define linux
+
+--cpp bin/cpp
+--cmd cd bin/cpp
+--cmd ./Main

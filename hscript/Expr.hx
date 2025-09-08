@@ -6,7 +6,6 @@ typedef Expr = {
 	var expr:ExprDef;
 	var min:Int;
 	var max:Int;
-	var origin:String;
 	var line:Int;
 }
 
