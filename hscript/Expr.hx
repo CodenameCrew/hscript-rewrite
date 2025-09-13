@@ -28,7 +28,7 @@ enum ExprDef {
     EIf(cond:Expr, thenExpr:Expr, ?elseExpr:Expr);
     EWhile(cond:Expr, body:Expr);
     EFor(varName:VariableType, iterator:Expr, body:Expr);
-    EForKeyValue(key:VariableType, iterator:Expr, body:Expr, value:VariableType);
+    EForKeyValue(key:VariableType, value:VariableType, iterator:Expr, body:Expr);
     EBreak;
     EContinue;
     EFunction(args:Array<Argument>, body:Expr, ?name:VariableType, ?isPublic:Bool, ?isStatic:Bool, ?isOverride:Bool);
@@ -39,9 +39,9 @@ enum ExprDef {
     ENew(className:VariableType, args:Array<Expr>);
     EThrow(expr:Expr);
     ETry(expr:Expr, catchVar:VariableType, catchExpr:Expr);
-    EObject(fields:Array<{ name:String, expr:Expr }>);
+    EObject(fields:Array<ObjectField>);
     ETernary(cond:Expr, thenExpr:Expr, elseExpr:Expr);
-    ESwitch(expr:Expr, cases:Array<{ values:Array<Expr>, body:Expr }>, ?defaultExpr:Expr);
+    ESwitch(expr:Expr, cases:Array<SwitchCase>, ?defaultExpr:Expr);
     EDoWhile(cond:Expr, body:Expr);
     EMeta(name:String, args:Array<Expr>, expr:Expr);
     EImport(path:String, mode:EImportMode);
@@ -53,6 +53,16 @@ typedef Argument = {
     var ?opt:Bool;
     var ?value:Expr;
 };
+
+typedef SwitchCase = {
+    var values:Array<Expr>;
+    var expr:Expr;
+}
+
+typedef ObjectField = {
+    var name:String; 
+    var expr:Expr;
+}
 
 enum EBinop {
     Add; // +

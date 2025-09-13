@@ -153,6 +153,7 @@ enum abstract LKeyword(String) from String {
     var STATIC:LKeyword = "static";
     var SWITCH:LKeyword = "switch";
     var THIS:LKeyword = "this";
+    var THROW:LKeyword = "throw";
     var TRUE:LKeyword = "true";
     var TRY:LKeyword = "try";
     var VAR:LKeyword = "var";
