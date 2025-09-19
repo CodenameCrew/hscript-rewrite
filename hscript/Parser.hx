@@ -56,7 +56,7 @@ class Parser {
         return switch (keyword) {
             case VAR | INLINE | FINAL: 
                 var variableName:String = parseIdent();
-                if(maybe(LTColon)) parseIdent(); // var:Type
+                if (maybe(LTColon)) parseIdent(); // var:Type
 
                 var assign:Expr = null; // var = ;
                 if (maybe(LTOp(ASSIGN))) assign = parseExpr();
@@ -253,6 +253,9 @@ class Parser {
 
             argument.opt = maybe(LTQuestion);
             argument.name = parseIdent();
+
+            if (maybe(LTColon)) parseIdent(); // var:Type
+
             if (maybe(LTOp(ASSIGN)))
                 argument.value = parseExpr();
 

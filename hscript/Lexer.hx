@@ -262,14 +262,14 @@ class Lexer {
                 case 0: return LTEof;
                 case " ".code, "\t".code, 13: tokenMin++; // space, tab, cr
                 case "\n".code: line++; tokenMin++; // line end
-                case 48,49,50,51,52,53,54,55,56,57: // 0...9
+                case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57: // 0...9
                 	var n:Int = charCode - 48;
 				    var exp:Float = 0;
                     while (true) {
                         charCode = readCharacter();
                         exp *= 10;
                         switch (charCode) {
-                            case 48,49,50,51,52,53,54,55,56,57: // 0...9
+                            case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57: // 0...9
                                 n = n * 10 + (charCode - 48);
                             case "e".code, "E".code:
                                 var token:LToken = this.token();
@@ -307,9 +307,9 @@ class Lexer {
                                 while (true) { // read hexa
                                     charCode = readCharacter();
                                     switch(charCode) {
-                                        case 48,49,50,51,52,53,54,55,56,57: hexa = (hexa << 4) + charCode - 48; // 0...9
-                                        case 65,66,67,68,69,70: hexa = (hexa << 4) + (charCode - 55); // A-F
-                                        case 97,98,99,100,101,102: hexa = (hexa << 4) + (charCode - 87); // a-f
+                                        case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57: hexa = (hexa << 4) + charCode - 48; // 0...9
+                                        case 65, 66, 67, 68, 69, 70: hexa = (hexa << 4) + (charCode - 55); // A-F
+                                        case 97, 98, 99, 100, 101, 102: hexa = (hexa << 4) + (charCode - 87); // a-f
                                         default: 
                                             this.charCode = charCode;
                                             return LTConst(LCInt(hexa));
@@ -332,14 +332,14 @@ class Lexer {
                 case ".".code: 
                     charCode = readCharacter();
                     switch(charCode) {
-                        case 48,49,50,51,52,53,54,55,56,57: // 0...9
+                        case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57: // 0...9
                             var n:Int = charCode - 48;
                             var exp:Float = 1;
                             while (true) {
                                 charCode = readCharacter();
                                 exp *= 10;
                                 switch(charCode) {
-                                    case 48,49,50,51,52,53,54,55,56,57: // 0...9
+                                    case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57: // 0...9
                                         n = n * 10 + (charCode - 48);
                                     default:
                                         this.charCode = charCode;
@@ -477,9 +477,9 @@ class Lexer {
                             k <<= 4;
                             var char = readCharacter();
                             switch (char) {
-                                case 48,49,50,51,52,53,54,55,56,57: k += char - 48; // 0-9
-                                case 65,66,67,68,69,70: k += char - 55; // A-F
-                                case 97,98,99,100,101,102: k += char - 87; // a-f
+                                case 48, 49, 50, 51, 52, 53, 54, 55, 56, 57: k += char - 48; // 0-9
+                                case 65, 66, 67, 68, 69, 70: k += char - 55; // A-F
+                                case 97, 98, 99, 100, 101, 102: k += char - 87; // a-f
                                 default:
                                     if (StringTools.isEof(char)) {
                                         error(EUnterminatedString, start, start);
