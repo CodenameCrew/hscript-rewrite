@@ -1,5 +1,6 @@
 package;
 
+import hscript.Parser;
 import hscript.Lexer;
 
 class Main {

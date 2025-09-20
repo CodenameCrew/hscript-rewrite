@@ -565,10 +565,12 @@ class Parser {
             case EFunction(_,expr,_,_): isBlock(expr);
             case EVar(_, expr): expr != null ? isBlock(expr) : false;
             case EIf(_, expr1, expr2): if( expr2 != null ) isBlock(expr2) else isBlock(expr1);
+            case EUnop(_, isPrefix, expr): !isPrefix && isBlock(expr);
             case EBinop(_, _, expr): isBlock(expr);
             case EWhile(_, expr): isBlock(expr);
             case EDoWhile(_, expr): isBlock(expr);
             case EFor(_, _, expr): isBlock(expr);
+            case EForKeyValue(_, _, expr, _): isBlock(expr);
             case EReturn(expr): expr != null && isBlock(expr);
             case ETry(_, _, expr): isBlock(expr);
             case EMeta(_, _, expr): isBlock(expr);
