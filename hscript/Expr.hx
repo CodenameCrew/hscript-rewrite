@@ -1,6 +1,17 @@
 package hscript;
 
+import haxe.macro.Expr.Unop;
 import hscript.Lexer.LConst;
+
+#if cpp
+typedef Int8 = cpp.UInt8;
+#elseif cs
+typedef Int8 = cs.StdTypes.UInt8;
+#elseif java
+typedef Int8 = java.types.UInt8;
+#else
+typedef Int8 = UInt; // fallback for JS, Python, etc.
+#end
 
 typedef Expr = {
 	var expr:ExprDef;
@@ -20,10 +31,11 @@ enum ExprDef {
     EConst(c:LConst);
     EIdent(name:VariableType);
     EVar(name:VariableType, ?init:Expr, ?isPublic:Bool, ?isStatic:Bool);
-    EParent(expr:Expr, ?noOptimize:Bool); // ()
+    EParent(expr:Expr); // ()
     EBlock(exprs:Array<Expr>); // { ... }
     EField(expr:Expr, field:String, ?safe:Bool);
     EBinop(op:EBinop, left:Expr, right:Expr);
+    EUnop(op:Unop, isPrefix:Bool, expr:Expr);
     ECall(func:Expr, args:Array<Expr>);
     EIf(cond:Expr, thenExpr:Expr, ?elseExpr:Expr);
     EWhile(cond:Expr, body:Expr);
@@ -49,7 +61,7 @@ enum ExprDef {
 }
 
 typedef Argument = {
-    var name:String;
+    var name:VariableType;
     var ?opt:Bool;
     var ?value:Expr;
 };
@@ -64,47 +76,106 @@ typedef ObjectField = {
     var expr:Expr;
 }
 
-enum EBinop {
-    Add; // +
-    Sub; // -
-    Mult; // *
-    Div; // /
-    Mod; // %
+/**
+ * Derived from haxe manual:
+ * https://haxe.org/manual/expression-operators-binops.html
+ */
+enum abstract EBinop(Int8) {
+    var ADD:EBinop; // +
+    var SUB:EBinop; // -
+    var MULT:EBinop; // *
+    var DIV:EBinop; // /
+    var MOD:EBinop; // %
 
-    And; // &
-    Or; // |
-    Xor; // ^
-    Shl; // <<
-    Shr; // >>
-    Ushr; // >>>
+    var AND:EBinop; // &
+    var OR:EBinop; // |
+    var XOR:EBinop; // ^
+    var SHL:EBinop; // <<
+    var SHR:EBinop; // >>
+    var USHR:EBinop; // >>>
 
-    Eq; // ==
-    Neq; // !=
-    Gte; // >=
-    Lte; // <=
-    Gt; // >
-    Lt; // <
+    var EQ:EBinop; // ==
+    var NEQ:EBinop; // !=
+    var GTE:EBinop; // >=
+    var LTE:EBinop; // <=
+    var GT:EBinop; // >
+    var LT:EBinop; // <
 
-    Bor; // ||
-    Band; // &&
-    Is; // is
-    Ncoal; // ??
+    var BOR:EBinop; // ||
+    var BAND:EBinop; // &&
+    var IS:EBinop; // is
+    var NCOAL:EBinop; // ??
 
-    Interval; // ...
-    Arrow; // =>
-    Assign; // =
+    var INTERVAL:EBinop; // ...
+    var ARROW:EBinop; // =>
+    var ASSIGN:EBinop; // =
 
-    AddAssign; // +=
-    SubAssign; // -=
-    MultAssign; // *=
-    DivAssign; // /=
-    ModAssign; // %=
-    ShlAssign; // <<=
-    ShrAssign; // >>=
-    UshrAssign; // >>>=
-    OrAssign; // |=
-    AndAssign; // &=
-    XorAssign; // ^=
+    var ADD_ASSIGN:EBinop; // +=
+    var SUB_ASSIGN:EBinop; // -=
+    var MULT_ASSIGN:EBinop; // *=
+    var DIV_ASSIGN:EBinop; // /=
+    var MOD_ASSIGN:EBinop; // %=
+    var SHL_ASSIGN:EBinop; // <<=
+    var SHR_ASSIGN:EBinop; // >>=
+    var USHR_ASSIGN:EBinop; // >>>=
+    var OR_ASSIGN:EBinop; // |=
+    var AND_ASSIGN:EBinop; // &=
+    var XOR_ASSIGN:EBinop; // ^=
+    var NCOAL_ASSIGN:EBinop; // ??=
+
+    /**
+     * Precedence gotten from:
+     * https://haxe.org/manual/expression-operators-precedence.html
+     */
+    public static final OP_PRECEDENCE:Array<Array<EBinop>> = [
+        [MOD],
+        [MULT, DIV],
+        [ADD, SUB],
+        [SHL, SHR, USHR],
+        [OR, AND, XOR],
+        [EQ, NEQ, GT, LT, GTE, LTE],
+        [INTERVAL],
+        [BAND],
+        [BOR],
+        [
+            ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, NCOAL_ASSIGN,
+            SHL_ASSIGN, SHR_ASSIGN, USHR_ASSIGN, OR_ASSIGN, AND_ASSIGN, XOR_ASSIGN, ARROW
+        ],
+        [NCOAL],
+        [IS]
+    ];
+
+    public static final OP_PRECEDENCE_LOOKUP:Array<Int> = {
+        var LOOKUP_MAP:Array<Int> = new Array<Int>();
+        for (i in 0...OP_PRECEDENCE.length) 
+            for (x in OP_PRECEDENCE[i]) LOOKUP_MAP[cast x] = i;
+        LOOKUP_MAP;
+    }
+
+    /**
+     * Before compound assignment is left precedence,
+     * compound assignment is 9th tier
+     */
+    public static final OP_PRECEDENCE_RIGHT_ASSOCIATION:Array<Bool> = {
+        var LOOKUP_MAP:Array<Bool> = new Array<Bool>();
+		for (x in OP_PRECEDENCE[9]) 
+            LOOKUP_MAP[cast x] = true;
+        LOOKUP_MAP;
+    }
+}
+
+/**
+ * Derived from haxe manual:
+ * https://haxe.org/manual/expression-operators-unops.html
+ */
+enum abstract EUnop(Int8) {
+    var BitwiseNegation:EUnop; // ~
+
+    var LogicalNegation:EUnop; // !
+    var ArithmeticNegation:EUnop; // -
+
+    var Increment:EUnop; // ++
+    var Decrement:EUnop; // --
 }
 
 enum EImportMode {

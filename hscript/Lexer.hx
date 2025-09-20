@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Expr.EBinop;
 import hscript.Error.ErrorDef;
 import haxe.ds.StringMap;
 
@@ -22,6 +23,7 @@ enum LToken {
     LTColon; // :
     LTSemiColon; // ;
     LTQuestion; // ?
+    LTQuestionDot; // ?.
 
     LTOp(op:LOp);
     LTKeyWord(keyword:LKeyword);
@@ -81,45 +83,76 @@ enum abstract LOp(String) from String to String {
     var COMMENT_OPEN:LOp = "/*";
     var COMMENT_CLOSE:LOp = "*/";
 
-    /**
-     * Precedence gotten from:
-     * https://haxe.org/manual/expression-operators-precedence.html
-     */
-    public static final OP_PRECEDENCE:Array<Array<LOp>> = [
-        [MOD],
-        [MULT, DIV],
-        [ADD, SUB],
-        [SHL, SHR, USHR],
-        [OR, AND, XOR],
-        [EQ, NEQ, GT, LT, GTE, LTE],
-        [INTERVAL],
-        [BAND],
-        [BOR],
-        [ // compound assignment
-            ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN, NCOAL_ASSIGN,
-            SHL_ASSIGN, SHR_ASSIGN, USHR_ASSIGN, OR_ASSIGN, AND_ASSIGN, XOR_ASSIGN, ARROW
-        ],
-        [FUNCTION_ARROW, NCOAL],
-        [IS]
+    public static final ALL_LOPS:Array<LOp> = [
+        ADD, SUB, MULT, DIV, MOD,
+        AND, OR, XOR, SHL, SHR, USHR,
+        EQ, NEQ, GTE, LTE, GT, LT,
+        BOR, BAND, IS, NCOAL,
+        INTERVAL, ARROW,
+        FUNCTION_ARROW, ASSIGN,
+        ADD_ASSIGN, SUB_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
+        SHL_ASSIGN, SHR_ASSIGN, USHR_ASSIGN,
+        OR_ASSIGN, AND_ASSIGN, XOR_ASSIGN, NCOAL_ASSIGN,
+        COMMENT, COMMENT_OPEN, COMMENT_CLOSE
     ];
 
-    public static final OP_PRECEDENCE_LEFT_LOOKUP:StringMap<Int> = {
-        var LOOKUP_MAP:StringMap<Int> = new StringMap<Int>();
+    // Hashmap under the hood, faster then doing ALL_KEYWORDS.indexOf(string) != -1 (linear scan across array) -lunar
+    public static final ALL_LOPS_LOOKUP:StringMap<Bool> = {
+        var LOOKUP_MAP:StringMap<Bool> = new StringMap<Bool>();
 
-        for (i in 0...9) // before compound assignment is left 
-			for (x in OP_PRECEDENCE[i]) LOOKUP_MAP.set(x, i);
+        for (keyword in ALL_LOPS) 
+            LOOKUP_MAP.set(Std.string(keyword), true);
 
         LOOKUP_MAP;
     }
 
-    public static final OP_PRECEDENCE_RIGHT_LOOKUP:StringMap<Int> = {
-        var LOOKUP_MAP:StringMap<Int> = new StringMap<Int>();
+    /**
+     * Boiler plate for parser...
+     * Should this be in the parser class?
+     */
+    public static final LEXER_TO_EXPR_OP:Map<LOp, EBinop> = [
+        LOp.ADD => EBinop.ADD,
+        LOp.SUB => EBinop.SUB,
+        LOp.MULT => EBinop.MULT,
+        LOp.DIV => EBinop.DIV,
+        LOp.MOD => EBinop.MOD,
 
-        for (i in 9...OP_PRECEDENCE.length) // after compound assignment is right 
-			for (x in OP_PRECEDENCE[i]) LOOKUP_MAP.set(x, i);
-        
-        LOOKUP_MAP;
-    }
+        LOp.AND => EBinop.AND,
+        LOp.OR => EBinop.OR,
+        LOp.XOR => EBinop.XOR,
+        LOp.SHL => EBinop.SHL,
+        LOp.SHR => EBinop.SHR,
+        LOp.USHR => EBinop.USHR,
+
+        LOp.EQ => EBinop.EQ,
+        LOp.NEQ => EBinop.NEQ,
+        LOp.GTE => EBinop.GTE,
+        LOp.LTE => EBinop.LTE,
+        LOp.GT => EBinop.GT,
+        LOp.LT => EBinop.LT,
+
+        LOp.BOR => EBinop.BOR,
+        LOp.BAND => EBinop.BAND,
+        LOp.IS => EBinop.IS,
+        LOp.NCOAL => EBinop.NCOAL,
+
+        LOp.INTERVAL => EBinop.INTERVAL,
+        LOp.ARROW => EBinop.ARROW,
+        LOp.ASSIGN => EBinop.ASSIGN,
+
+        LOp.ADD_ASSIGN => EBinop.ADD_ASSIGN,
+        LOp.SUB_ASSIGN => EBinop.SUB_ASSIGN,
+        LOp.MULT_ASSIGN => EBinop.MULT_ASSIGN,
+        LOp.DIV_ASSIGN => EBinop.DIV_ASSIGN,
+        LOp.MOD_ASSIGN => EBinop.MOD_ASSIGN,
+        LOp.SHL_ASSIGN => EBinop.SHL_ASSIGN,
+        LOp.SHR_ASSIGN => EBinop.SHR_ASSIGN,
+        LOp.USHR_ASSIGN => EBinop.USHR_ASSIGN,
+        LOp.OR_ASSIGN => EBinop.OR_ASSIGN,
+        LOp.AND_ASSIGN => EBinop.AND_ASSIGN,
+        LOp.XOR_ASSIGN => EBinop.XOR_ASSIGN,
+        LOp.NCOAL_ASSIGN => EBinop.NCOAL_ASSIGN
+    ];
 }
 
 /**
@@ -358,7 +391,16 @@ class Lexer {
                     return LTDot;
                 case ":".code: return LTColon;
                 case ";".code: return LTSemiColon;
-                case "?".code: return LTQuestion;
+                case "?".code: // handle these seperately from other operators since they are not inculded in the op characters list
+                    charCode = readCharacter();
+                    switch (charCode) {
+                        case "?".code: // op: ??
+                            if (readCharacter() == "=".code) // op: ??=
+                                return LTOp(NCOAL_ASSIGN);
+                            return LTOp(NCOAL);
+                        case ".".code: return LTQuestionDot;
+                    }
+                    return LTQuestion;
                 case "'".code, '"'.code: return LTConst(LCString(readString(charCode)));
                 case '='.code:
                     charCode = readCharacter();
@@ -408,7 +450,7 @@ class Lexer {
                             var preop:String = op;
                             op += String.fromCharCode(charCode);
                             
-                            if (!LOp.OP_PRECEDENCE_LEFT_LOOKUP.exists(op) && LOp.OP_PRECEDENCE_LEFT_LOOKUP.exists(preop)) {
+                            if (!LOp.ALL_LOPS_LOOKUP.exists(op) && LOp.ALL_LOPS_LOOKUP.exists(preop)) {
                                 if (op == COMMENT || op == COMMENT_OPEN)
                                     return comment(op, charCode);
 
@@ -471,7 +513,7 @@ class Lexer {
                     case 't'.code: b.addChar('\t'.code);
                     case "'".code, '"'.code, '\\'.code: b.addChar(c);
                     case '/'.code: b.addChar(c);
-                    case "u".code: // JSON parsing
+                    case "u".code: // hexadecimal parsing
                         var k:Int = 0;
                         for(i in 0...4) {
                             k <<= 4;
@@ -491,7 +533,7 @@ class Lexer {
                         b.addChar(k);
 				    default: invalidChar(c);
 				}
-			} else if (c == 92)
+			} else if ('\\'.code == 92)
 				esc = true;
 			else if (c == untilCharCode)
 				break;

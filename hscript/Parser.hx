@@ -1,5 +1,7 @@
 package hscript;
 
+import hscript.Expr.EBinop;
+import hscript.Lexer.LOp;
 import hscript.Expr.SwitchCase;
 import hscript.Expr.Argument;
 import hscript.Expr.VariableType;
@@ -18,6 +20,7 @@ class Parser {
     private var token:Int = 0;
 
     private var variablesList:Array<String> = [];
+    private var uniqueID:Int = 0;
 
     public var origin:String = null;
 
@@ -27,29 +30,174 @@ class Parser {
 
     private inline function parseExpr():Expr {
         switch (readToken()) {
-            case LTOpenP: parseParentheses();
-            case LTCloseP: 
-            case LTOpenBr:
-            case LTCloseBr:
-            case LTOpenCB:
-            case LTCloseCB:
-            case LTComma:
-            case LTDot:
-            case LTColon:
-            case LTSemiColon:
-            case LTQuestion:
+            case LTOpenP: 
+                if (maybe(LTCloseP)) { // empty args lambda 
+                    deepEnsure(LTOp(FUNCTION_ARROW));
+                    var expr:Expr = parseExpr();
+                    return create(EFunction(null, expr));
+                }
+
+                inline function parseLambda(args:Array<Argument>) {
+                    var args:Array<Argument> = parseFunctionArgs(args);
+                    deepEnsure(LTOp(FUNCTION_ARROW));
+
+                    var expr:Expr = parseExpr();
+                    return create(EFunction(args, expr));
+                }
+                
+                var expr:Expr = parseExpr();
+                switch (readToken()) {
+                    case LTCloseP: return parseNextExpr(create(EParent(expr)));
+                    case LTColon:
+                        parseIdent(); // ):Type
+
+                        switch (readToken()) {
+                            case LTCloseP: parseNextExpr(expr);
+                            case LTComma: 
+                                switch (expr.expr) {
+                                    case EIdent(name): return parseLambda([{name: name}]);
+                                    default:
+                                }
+                            default:
+                        }
+                    case LTComma: 
+                        switch (expr.expr) {
+                            case EIdent(name): return parseLambda([{name: name}]);
+                            default:
+                        }
+                    default:
+                }
+            case LTOpenBr: 
+                switch (readToken()) {
+                    case LTCloseBr: return parseNextExpr(create(EObject(null)));
+                    case LTIdentifier(identifier):
+                        var peek:LToken = peekToken();
+
+                        reverseToken(); // reverse Peek Token
+                        reverseToken(); // reverse LTIdentifier
+
+                        if (peek == LTColon) parseObject();
+                    case LTConst(const):
+                        switch (const) {
+                            case LCString(string):
+                                var peek:LToken = peekToken();
+
+                                reverseToken(); // reverse Peek Token
+                                reverseToken(); // reverse LTIdentifier
+                                
+                                if (peek == LTColon) parseObject();
+                                reverseToken(); // reverse LTIdentifier
+                            default: reverseToken(); // reverse LTConst
+                        }
+                    default: reverseToken(); // reverse LTOpenBr
+                }
+
+                var exprs:Array<Expr> = [];
+                while (true) {
+                    parseBlock(exprs);
+                    if (maybe(LTCloseBr) || maybe(LTEof)) break;
+                }
+                return create(EBlock(exprs));
+            case LTOpenCB: 
+                var exprs:Array<Expr> = [];
+                while (true) {
+                    var expr:Expr = parseExpr();
+                    exprs.push(expr);
+                    switch (readToken()) {
+                        case LTComma:
+                        case LTCloseCB: break;
+                        default:
+                            unexpected(readTokenInPlace());
+                            break;
+                    }
+                }
+
+                if (exprs.length == 1 && exprs[0] != null) {
+                    var firstExpr:Expr = exprs[0];
+                    switch (firstExpr.expr) {
+                        case EFor(_), EForKeyValue(_), EWhile(_), EDoWhile(_):
+                            var temporaryVariable:Int = variableID("__a_" + (uniqueID++));
+                            var exprBlock:Expr = create(EBlock([
+                                create(EVar(temporaryVariable, create(EArrayDecl([])))),
+                                parseArrayComprehensions(temporaryVariable, firstExpr),
+                                create(EIdent(temporaryVariable))
+                            ]));
+                            return parseNextExpr(exprBlock);
+                        default:
+                    }
+                }
+                return parseNextExpr(create(EArrayDecl(exprs)));
             case LTOp(op):
-            case LTKeyWord(keyword):
-            case LTIdentifier(identifier):
-            case LTConst(const):
+                if (op == SUB) { // Arithmetic Negation -123
+                    var expr:Expr = parseExpr();
+                    if (expr == null) return parseUnop(op, expr);
+
+                    return switch (expr.expr) {
+                        case EConst(LCInt(int)): create(EConst(LCInt(-int)));
+                        case EConst(LCFloat(int)): create(EConst(LCFloat(-int)));
+                        default: parseUnop(op, expr);
+                    }
+                }
+
+                if (LOp.OP_PRECEDENCE_LEFT_LOOKUP.get(op) < 0) return parseUnop(op, parseExpr());
+
+                return unexpected(readTokenInPlace());
+            case LTKeyWord(keyword): return parseNextExpr(parseKeyword(keyword));
+            case LTIdentifier(identifier): return parseNextExpr(create(EIdent(identifier)));
+            case LTConst(const): return parseNextExpr(create(EConst(const)));
             case LTMeta(meta):
-            case LTPrepro(prepro):
+                var args:Array<String> = parseParentheses();
+                var expr:Expr = parseExpr();
+
+                return create(EMeta(meta, args, expr));
             case LTEof:
+            default: 
+                unexpected(readTokenInPlace());
+                return null;
         }
     }
 
     private inline function parseNextExpr(prev:Expr):Expr {
+        switch (readToken()) {
+            case LTOp(op):
+                if (op == FUNCTION_ARROW) { // Single arg reinterpretation of `f -> e` , `(f) -> e`
+                    switch (prev.expr) {
+                        case EIdent(name), EParent(expr.expr => EIdent(name)):
+                            var expr:Expr = parseExpr();
+                            return EFunction(null, expr);
+                        default:
+                    }
 
+                    unexpected(readTokenInPlace());
+                }
+
+                if (LOp.OP_PRECEDENCE_LOOKUP.get(op) == -1) {
+                    if (isBlock(prev) || prev.expr.match(EParent(_))) {
+                        reverseToken();
+                        return prev;
+                    }
+                    return parseNextExpr(create(EUnop(op, false, prev)));
+                }
+                var expr:Expr = parseExpr();
+                return parseBinop(op, prev, expr);
+            case LTDot | LTQuestionDot:
+                var fieldName:String = parseIdent();
+                return parseNextExpr(create(EField(prev, fieldName, readTokenInPlace() == LTQuestionDot)));
+            case LTOpenP: return parseNextExpr(create(ECall(prev, parseParentheses())));
+            case LTOpenBr: // array/map access arr[0]
+                var arrayIndex:Expr = parseExpr();
+                ensure(LTCloseBr);
+
+                return parseNextExpr(create(EArray(prev, arrayIndex)));
+            case LTQuestion: // ternary (a == 5 ? x : y)
+                var thenExpr:Expr = parseExpr();
+                ensure(LTColon);
+                var elseExpr:Expr = parseExpr();
+                return create(ETernary(prev, thenExpr, elseExpr));
+            default:
+                reverseToken();
+                return prev;
+        }
     }
 
     private inline function parseKeyword(keyword:LKeyword) {
@@ -244,8 +392,85 @@ class Parser {
         return args;
     }
 
-    private inline function parseFunctionArgs():Array<Argument> {
-        var args:Array<Argument> = [];
+    /**
+     * Make sure the higher the precedence the deeper the expression in the AST.
+     * 
+     * For example: lets say we are parsing the experssion 2 + 3 * 4
+     * 
+     * parseBinop(op, left, right)
+     * op = +
+     * left = 2
+     * right = 3 * 4
+     * 
+     * switch (right)
+     * right is a EBinop(op2, _, _)
+     * op2 = *
+     * 
+     * precedence(+) < precedence(*) = restructure
+     * Results in: +(2, *(3,4))
+     */
+    private inline function parseBinop(op:EBinop, left:Expr, right:Expr) {
+        if (right == null) return create(EBinop(op, left, right));
+        return switch (right.expr) {
+            case EBinop(op2, left2, right2):
+                var delta:Int = EBinop.OP_PRECEDENCE_LOOKUP[op] - EBinop.OP_PRECEDENCE_LOOKUP[op2];
+                if (delta < 0 || (delta == 0 || !EBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION.exists(op)))
+                    create(EBinop(op2, parseBinop(op, left, left2), right2));
+                else 
+                    create(EBinop(op, left, right));
+            case ETernary(cond, thenExpr, elseExpr):
+                if (EBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION[op])
+                    create(EBinop(op, left, right));
+                else
+                    create(ETernary(parseBinop(op, left, cond), thenExpr, elseExpr));
+            default: create(EBinop(op, left, right));
+        }
+    }
+
+    /**
+     * Make sure the unary operator gets attached to the right part of AST.
+     * 
+     * For example: -a + b; the parser sees - applied to (a + b), but it should acuttaly be (-a) + b by Haxe language rules.
+     * Also: !a ? b : c; parser sees !(a ? b : c), ensure it is correct (!a) ? b : c.
+     */
+    private inline function parseUnop(unop:EUnop, expr:Expr):Expr {
+        if (expr == null) return null;
+
+        return switch (expr.expr) {
+            case EBinop(op, left, right): create(EBinop(op, parseUnop(unop, left), right));
+            case ETernary(cond, thenExpr, elseExpr): create(ETernary(parseUnop(cond), thenExpr, elseExpr));
+            default: create(EUnop(unop, true, expr));
+        }
+    }
+
+    /**
+     * Turns a expression (in this case array declaration) into a series of pushes into temp array.
+     * 
+     * For example: var array:Array = [for (i in 0...8) i * 2];
+     * 
+     * Gets turned into:
+     * var __a_0 = [];
+     * for (i in 0...8)
+     *     __a_0.push(i * 2);
+     * __a_0;
+     */
+    private inline function parseArrayComprehensions(temp:VariableType, expr:Expr):Expr {
+        if (expr == null) return null;
+        
+        return switch (expr.expr) {
+            case EFor(varName, iterator, body): create(EFor(varName, iterator, parseArrayComprehensions(temp, body)));
+            case EForKeyValue(key, value, iterator, body): create(EFor(key, value, iterator, parseArrayComprehensions(temp, body)));
+            case EWhile(cond, body): create(EWhile(cond, parseArrayComprehensions(temp, body)));
+            case EDoWhile(cond, body): create(EDoWhile(cond, parseArrayComprehensions(temp, body)));
+            case EIf(cond, thenExpr, elseExpr): create(EIf(cond, parseArrayComprehensions(temp, thenExpr), parseArrayComprehensions(temp, elseExpr)));
+            case EBlock([expr]): create(EBlock([parseArrayComprehensions(temp, expr)]));
+            case EParent(expr): create(EParent(parseArrayComprehensions(temp, expr)));
+            default: create(ECall(create(EField(create(EIdent(temp)), "push")), [expr]));
+        }
+    }
+
+    private inline function parseFunctionArgs(?args:Array<Argument>):Array<Argument> {
+        args ??= [];
         if (maybe(LTCloseP)) return args;
 
         while (true) {
@@ -269,6 +494,40 @@ class Parser {
 		}
 
         return args;
+    }
+
+    private inline function parseObject():Expr {
+        var fields:Array<ObjectField> = [];
+
+        while (true) {
+            var fieldName:String = null;
+            switch (readToken()) {
+                case LTIdentifier(identifier): fieldName = identifier;
+                case LTConst(const):
+                    switch (const) {
+                        case LCString(string): fieldName = identifier;
+                        default: unexpected(readTokenInPlace());
+                    }
+                case LTCloseBr: break;
+                default:
+                    unexpected(readTokenInPlace());
+                    break;
+            }
+            ensure(LTColon);
+
+            var expr:Expr = parseExpr();
+            fields.push({name: fieldName, expr: expr});
+
+            switch (readToken()) {
+                case LTCloseBr: break;
+                case LTComma:
+                default: 
+                    unexpected(readTokenInPlace());
+                    break;
+            }
+        }
+
+        return parseNextExpr(create(EObject(fields)));
     }
 
     private inline function parseBlock(exprs:Array<Expr>) {
