@@ -1,6 +1,5 @@
 package hscript;
 
-import haxe.macro.Expr.Unop;
 import hscript.Lexer.LConst;
 
 #if cpp
@@ -35,7 +34,7 @@ enum ExprDef {
     EBlock(exprs:Array<Expr>); // { ... }
     EField(expr:Expr, field:String, ?safe:Bool);
     EBinop(op:EBinop, left:Expr, right:Expr);
-    EUnop(op:Unop, isPrefix:Bool, expr:Expr);
+    EUnop(op:EUnop, isPrefix:Bool, expr:Expr);
     ECall(func:Expr, args:Array<Expr>);
     EIf(cond:Expr, thenExpr:Expr, ?elseExpr:Expr);
     EWhile(cond:Expr, body:Expr);
@@ -184,5 +183,5 @@ enum EImportMode {
     All; // import haxe.*;
 }
 
-typedef VariableType = Int;
+typedef VariableType = Null<Int>;
 typedef VariableInfo = Array<String>;

@@ -5,4 +5,7 @@
 --define no-debug
 --dce no
 
+-D HXCPP_STACK_SIZE=8388608
+--debug
+
 --define analyzer-optimize

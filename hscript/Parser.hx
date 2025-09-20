@@ -1,6 +1,8 @@
 package hscript;
 
-import hscript.Expr.EBinop;
+import hscript.Expr.ObjectField;
+import hscript.Expr.EUnop as ExprUnop;
+import hscript.Expr.EBinop as ExprBinop;
 import hscript.Lexer.LOp;
 import hscript.Expr.SwitchCase;
 import hscript.Expr.Argument;
@@ -28,7 +30,40 @@ class Parser {
         this.origin = origin ?? "";
     }
 
-    private inline function parseExpr():Expr {
+    /**
+     * Parses a string into a AST to run in a interperter.
+     * @param string input string
+     * @return Expr output AST
+     */
+    public function parseString(string:String):Expr {
+        return parse(Lexer.tokenize(string));
+    }
+
+    /**
+     * Parses a list of tokens into a AST to run in a interperter.
+     * @param tokens input tokens 
+     * @return Expr output AST
+     */
+    public function parse(tokens:Array<LTokenPos>):Expr {
+        if (tokens == null || tokens.length == 0)
+            return create(EInfo(null, create(EBlock([]))));
+        
+        this.tokens = tokens;
+
+        for (i in 0...tokens.length) {
+    trace(i + " => " + Std.string(tokens[i].token));
+}
+
+        var exprs:Array<Expr> = [];
+        while (true) {
+            if (peekToken() == LTEof) break;
+            parseBlock(exprs);
+        }
+        return create(EInfo(variablesList, if (exprs.length == 1) exprs[0] else create(EBlock(exprs))));
+    }
+
+    @:noInline private function parseExpr():Expr {
+        trace("sdsddd");
         switch (readToken()) {
             case LTOpenP: 
                 if (maybe(LTCloseP)) { // empty args lambda 
@@ -46,13 +81,14 @@ class Parser {
                 }
                 
                 var expr:Expr = parseExpr();
+                trace(expr);
                 switch (readToken()) {
                     case LTCloseP: return parseNextExpr(create(EParent(expr)));
                     case LTColon:
                         parseIdent(); // ):Type
 
                         switch (readToken()) {
-                            case LTCloseP: parseNextExpr(expr);
+                            case LTCloseP: return parseNextExpr(expr);
                             case LTComma: 
                                 switch (expr.expr) {
                                     case EIdent(name): return parseLambda([{name: name}]);
@@ -65,8 +101,11 @@ class Parser {
                             case EIdent(name): return parseLambda([{name: name}]);
                             default:
                         }
+                    case LTEof: return expr;
                     default:
                 }
+
+                return unexpected(readTokenInPlace());
             case LTOpenBr: 
                 switch (readToken()) {
                     case LTCloseBr: return parseNextExpr(create(EObject(null)));
@@ -128,58 +167,62 @@ class Parser {
                 }
                 return parseNextExpr(create(EArrayDecl(exprs)));
             case LTOp(op):
+                trace("SDs");
+                var unop:ExprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
                 if (op == SUB) { // Arithmetic Negation -123
                     var expr:Expr = parseExpr();
-                    if (expr == null) return parseUnop(op, expr);
+                    if (expr == null) return parseUnop(unop, expr);
 
                     return switch (expr.expr) {
                         case EConst(LCInt(int)): create(EConst(LCInt(-int)));
                         case EConst(LCFloat(int)): create(EConst(LCFloat(-int)));
-                        default: parseUnop(op, expr);
+                        default: parseUnop(unop, expr);
                     }
                 }
 
-                if (LOp.OP_PRECEDENCE_LEFT_LOOKUP.get(op) < 0) return parseUnop(op, parseExpr());
+                if (ExprBinop.OP_PRECEDENCE_LOOKUP[cast unop] < 0) return parseUnop(unop, parseExpr());
 
                 return unexpected(readTokenInPlace());
             case LTKeyWord(keyword): return parseNextExpr(parseKeyword(keyword));
-            case LTIdentifier(identifier): return parseNextExpr(create(EIdent(identifier)));
+            case LTIdentifier(identifier): return parseNextExpr(create(EIdent(variableID(identifier))));
             case LTConst(const): return parseNextExpr(create(EConst(const)));
             case LTMeta(meta):
-                var args:Array<String> = parseParentheses();
+                var args:Array<Expr> = parseParentheses();
                 var expr:Expr = parseExpr();
 
                 return create(EMeta(meta, args, expr));
-            case LTEof:
             default: 
                 unexpected(readTokenInPlace());
                 return null;
         }
     }
 
-    private inline function parseNextExpr(prev:Expr):Expr {
+    private function parseNextExpr(prev:Expr):Expr {
+        trace("sdagfhhh");
         switch (readToken()) {
             case LTOp(op):
                 if (op == FUNCTION_ARROW) { // Single arg reinterpretation of `f -> e` , `(f) -> e`
                     switch (prev.expr) {
-                        case EIdent(name), EParent(expr.expr => EIdent(name)):
+                        case EIdent(name), EParent(_.expr => EIdent(name)):
                             var expr:Expr = parseExpr();
-                            return EFunction(null, expr);
+                            return create(EFunction(null, expr));
                         default:
                     }
 
                     unexpected(readTokenInPlace());
                 }
 
-                if (LOp.OP_PRECEDENCE_LOOKUP.get(op) == -1) {
+                if (ExprBinop.OP_PRECEDENCE_LOOKUP[cast LOp.LEXER_TO_EXPR_OP.get(op)] == -1) {
                     if (isBlock(prev) || prev.expr.match(EParent(_))) {
                         reverseToken();
                         return prev;
                     }
-                    return parseNextExpr(create(EUnop(op, false, prev)));
+                    return parseNextExpr(create(EUnop(LOp.LEXER_TO_EXPR_UNOP.get(op), false, prev)));
                 }
+                trace("parseNextExpr before parseExpr: token=" + token + " peek=" + Std.string(peekToken()));
                 var expr:Expr = parseExpr();
-                return parseBinop(op, prev, expr);
+                trace("returned from parseExpr (len now " + tokens.length + ")");
+                return parseBinop(LOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
             case LTDot | LTQuestionDot:
                 var fieldName:String = parseIdent();
                 return parseNextExpr(create(EField(prev, fieldName, readTokenInPlace() == LTQuestionDot)));
@@ -200,7 +243,8 @@ class Parser {
         }
     }
 
-    private inline function parseKeyword(keyword:LKeyword) {
+    @:haxe.warning("-WUnusedPattern") // get rid of (WUnusedPattern) This case is unused on INLINE case
+    private function parseKeyword(keyword:LKeyword) {
         return switch (keyword) {
             case VAR | INLINE | FINAL: 
                 var variableName:String = parseIdent();
@@ -409,17 +453,18 @@ class Parser {
      * precedence(+) < precedence(*) = restructure
      * Results in: +(2, *(3,4))
      */
-    private inline function parseBinop(op:EBinop, left:Expr, right:Expr) {
+    private inline function parseBinop(op:ExprBinop, left:Expr, right:Expr) {
+        trace(op, left, right);
         if (right == null) return create(EBinop(op, left, right));
         return switch (right.expr) {
             case EBinop(op2, left2, right2):
-                var delta:Int = EBinop.OP_PRECEDENCE_LOOKUP[op] - EBinop.OP_PRECEDENCE_LOOKUP[op2];
-                if (delta < 0 || (delta == 0 || !EBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION.exists(op)))
+                var delta:Int = ExprBinop.OP_PRECEDENCE_LOOKUP[cast op] - ExprBinop.OP_PRECEDENCE_LOOKUP[cast op2];
+                if (delta < 0 || (delta == 0 || ExprBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION.indexOf(cast op) != -1))
                     create(EBinop(op2, parseBinop(op, left, left2), right2));
                 else 
                     create(EBinop(op, left, right));
             case ETernary(cond, thenExpr, elseExpr):
-                if (EBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION[op])
+                if (ExprBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION[cast op])
                     create(EBinop(op, left, right));
                 else
                     create(ETernary(parseBinop(op, left, cond), thenExpr, elseExpr));
@@ -433,12 +478,12 @@ class Parser {
      * For example: -a + b; the parser sees - applied to (a + b), but it should acuttaly be (-a) + b by Haxe language rules.
      * Also: !a ? b : c; parser sees !(a ? b : c), ensure it is correct (!a) ? b : c.
      */
-    private inline function parseUnop(unop:EUnop, expr:Expr):Expr {
+    private inline function parseUnop(unop:ExprUnop, expr:Expr):Expr {
         if (expr == null) return null;
 
         return switch (expr.expr) {
             case EBinop(op, left, right): create(EBinop(op, parseUnop(unop, left), right));
-            case ETernary(cond, thenExpr, elseExpr): create(ETernary(parseUnop(cond), thenExpr, elseExpr));
+            case ETernary(cond, thenExpr, elseExpr): create(ETernary(parseUnop(unop, cond), thenExpr, elseExpr));
             default: create(EUnop(unop, true, expr));
         }
     }
@@ -459,7 +504,7 @@ class Parser {
         
         return switch (expr.expr) {
             case EFor(varName, iterator, body): create(EFor(varName, iterator, parseArrayComprehensions(temp, body)));
-            case EForKeyValue(key, value, iterator, body): create(EFor(key, value, iterator, parseArrayComprehensions(temp, body)));
+            case EForKeyValue(key, value, iterator, body): create(EForKeyValue(key, value, iterator, parseArrayComprehensions(temp, body)));
             case EWhile(cond, body): create(EWhile(cond, parseArrayComprehensions(temp, body)));
             case EDoWhile(cond, body): create(EDoWhile(cond, parseArrayComprehensions(temp, body)));
             case EIf(cond, thenExpr, elseExpr): create(EIf(cond, parseArrayComprehensions(temp, thenExpr), parseArrayComprehensions(temp, elseExpr)));
@@ -477,7 +522,7 @@ class Parser {
 			var argument:Argument = {name: null};
 
             argument.opt = maybe(LTQuestion);
-            argument.name = parseIdent();
+            argument.name = variableID(parseIdent());
 
             if (maybe(LTColon)) parseIdent(); // var:Type
 
@@ -505,7 +550,7 @@ class Parser {
                 case LTIdentifier(identifier): fieldName = identifier;
                 case LTConst(const):
                     switch (const) {
-                        case LCString(string): fieldName = identifier;
+                        case LCString(string): fieldName = string;
                         default: unexpected(readTokenInPlace());
                     }
                 case LTCloseBr: break;
@@ -597,6 +642,8 @@ class Parser {
     }
 
     private inline function readToken():LToken {
+        if (token >= tokens.length) return LTEof;
+        trace("readToken at " + token + " => " + Std.string(tokens[token].token));
         return tokens[token++].token;
     }
 
@@ -605,12 +652,16 @@ class Parser {
     }
 
     private inline function peekToken():LToken {
-        var token:LToken = readToken();
+        trace("PEEK at " + token);
+        var t = readToken();
         reverseToken();
-        return token;
+        return t;
     }
 
-    private inline function reverseToken() {token--;}
+    private inline function reverseToken() {
+        if (token > 0) token--;
+        else token = 0;
+    }
 
     private inline function unexpected(token:LToken) {
 		error(EUnexpected(Std.string(token)), exprMin, exprMax);

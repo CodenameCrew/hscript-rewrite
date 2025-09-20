@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Expr.EUnop;
 import hscript.Expr.EBinop;
 import hscript.Error.ErrorDef;
 import haxe.ds.StringMap;
@@ -79,6 +80,11 @@ enum abstract LOp(String) from String to String {
     var XOR_ASSIGN:LOp = "^=";
     var NCOAL_ASSIGN:LOp = "??=";
 
+    var NOT:LOp = "!";
+    var NOT_BITWISE:LOp = "~";
+    var INCREMENT:LOp = "++";
+    var DECREMENT:LOp = "--";
+
     var COMMENT:LOp = "//";
     var COMMENT_OPEN:LOp = "/*";
     var COMMENT_CLOSE:LOp = "*/";
@@ -152,6 +158,16 @@ enum abstract LOp(String) from String to String {
         LOp.AND_ASSIGN => EBinop.AND_ASSIGN,
         LOp.XOR_ASSIGN => EBinop.XOR_ASSIGN,
         LOp.NCOAL_ASSIGN => EBinop.NCOAL_ASSIGN
+    ];
+
+    public static final LEXER_TO_EXPR_UNOP:Map<LOp, EUnop> = [
+        LOp.NOT_BITWISE => EUnop.BitwiseNegation,
+
+        LOp.NOT => EUnop.LogicalNegation,
+        LOp.SUB => EUnop.ArithmeticNegation,
+
+        LOp.INCREMENT => EUnop.Increment,
+        LOp.DECREMENT => EUnop.Decrement
     ];
 }
 
@@ -256,14 +272,14 @@ class Lexer {
         this.origin = origin ?? "";
     }
 
-    public function tokenize(string:String):Array<LTokenPos> {
+    public function create(string:String):Array<LTokenPos> {
         input = string ?? "";
         character = 0;
 
         while (true) {
 			var ltoken:LToken = token();
-			if (ltoken == LTEof) break;
             push(ltoken);
+			if (ltoken == LTEof) break;
         }
 
         return tokens;
@@ -601,4 +617,20 @@ class Lexer {
     inline function readCharacter() {
 		return StringTools.fastCodeAt(input, character++);
 	}
+
+    /**
+     * Turns a input string into a list of tokens (for use in a parser).
+     * @param input input string
+     * @return Array<LTokenPos> output array
+     */
+    public static function tokenize(input:String):Array<LTokenPos> {
+        var lexer:Lexer = new Lexer();
+        var output:Array<LTokenPos> = lexer.create(input);
+
+        if (output[output.length-1].token != LTEof) // safe gaurd
+            output.push({token: LTEof, line: output[output.length-1].line, min: output[output.length-1].min, max: output[output.length-1].max});
+
+        lexer = null;
+        return output;
+    }
 }
