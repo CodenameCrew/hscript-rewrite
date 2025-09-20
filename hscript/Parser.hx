@@ -25,6 +25,11 @@ class Parser {
     private var uniqueID:Int = 0;
 
     public var origin:String = null;
+    
+    #if HSCRIPT_VERBOSE_PARSER
+    private var recursionDepth:Int = 0;
+    private var maxRecursionDepth:Int = 20;
+    #end
 
     public function new(?origin:String) {
         this.origin = origin ?? "";
@@ -50,9 +55,11 @@ class Parser {
         
         this.tokens = tokens;
 
-        for (i in 0...tokens.length) {
-            trace(i + " => " + Std.string(tokens[i].token));
-        }
+        #if HSCRIPT_VERBOSE_PARSER
+        trace('Starting parse with ${tokens.length} tokens');
+        recursionDepth = 0;
+        maxRecursionDepth = 20;
+        #end
 
         var exprs:Array<Expr> = [];
         while (true) {
@@ -62,7 +69,16 @@ class Parser {
         return create(EInfo(variablesList, if (exprs.length == 1) exprs[0] else create(EBlock(exprs))));
     }
 
-    @:noInline private function parseExpr():Expr {
+    private function parseExpr():Expr {
+        #if HSCRIPT_VERBOSE_PARSER
+        recursionDepth++;
+        if (recursionDepth > maxRecursionDepth) {
+            maxRecursionDepth = recursionDepth;
+            trace('MAX RECURSION DEPTH: $maxRecursionDepth at token $token/${tokens.length}');
+        }
+        trace('parseExpr() depth: $recursionDepth, token: $token/${tokens.length}');
+        #end
+        
         switch (readToken()) {
             case LTOpenP: 
                 if (maybe(LTCloseP)) { // empty args lambda 
@@ -136,7 +152,6 @@ class Parser {
                 }
                 return create(EBlock(exprs));
             case LTOpenBr: 
-                trace("sds");
                 var exprs:Array<Expr> = [];
                 while (true) {
                     var expr:Expr = parseExpr();
@@ -196,8 +211,25 @@ class Parser {
     }
 
     private function parseNextExpr(prev:Expr):Expr {
+        #if HSCRIPT_VERBOSE_PARSER
+        recursionDepth++;
+        trace('parseNextExpr() called at token: $token, prev: ${prev.expr}');
+        #end
+
         switch (readToken()) {
             case LTOp(op):
+                #if HSCRIPT_VERBOSE_PARSER
+                trace('parseNextExpr LTOp: op=$op');
+                #end
+                var exprOp = LOp.LEXER_TO_EXPR_OP.get(op);
+                #if HSCRIPT_VERBOSE_PARSER
+                trace('Mapped exprOp: $exprOp');
+                #end
+                var precedence = ExprBinop.OP_PRECEDENCE_LOOKUP[cast exprOp];
+                #if HSCRIPT_VERBOSE_PARSER
+                trace('Precedence: $precedence');
+                #end
+
                 if (op == FUNCTION_ARROW) { // Single arg reinterpretation of `f -> e` , `(f) -> e`
                     switch (prev.expr) {
                         case EIdent(name), EParent(_.expr => EIdent(name)):
@@ -209,16 +241,22 @@ class Parser {
                     unexpected(readTokenInPlace());
                 }
 
-                if (ExprBinop.OP_PRECEDENCE_LOOKUP[cast LOp.LEXER_TO_EXPR_OP.get(op)] == -1) {
+                if (precedence == -1) {
+                    #if HSCRIPT_VERBOSE_PARSER
+                    trace('Precedence is -1, trying unary path');
+                    #end
+                    var unop = LOp.LEXER_TO_EXPR_UNOP.get(op);
+                    #if HSCRIPT_VERBOSE_PARSER
+                    trace('Unary op: $unop');
+                    #end
                     if (isBlock(prev) || prev.expr.match(EParent(_))) {
                         reverseToken();
                         return prev;
                     }
-                    return parseNextExpr(create(EUnop(LOp.LEXER_TO_EXPR_UNOP.get(op), false, prev)));
+                    return parseNextExpr(create(EUnop(unop, false, prev)));
                 }
-                trace("parseNextExpr before parseExpr: token=" + token + " peek=" + Std.string(peekToken()));
+
                 var expr:Expr = parseExpr();
-                trace("returned from parseExpr (len now " + tokens.length + ")");
                 return parseBinop(LOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
             case LTDot | LTQuestionDot:
                 var fieldName:String = parseIdent();
@@ -242,7 +280,11 @@ class Parser {
 
     @:haxe.warning("-WUnusedPattern") // get rid of (WUnusedPattern) This case is unused on INLINE case
     private function parseKeyword(keyword:LKeyword) {
-        return switch (keyword) {
+        #if HSCRIPT_VERBOSE_PARSER
+        trace('parseKeyword($keyword) at token: $token');
+        #end
+        var startToken = token;
+        var res = switch (keyword) {
             case VAR | INLINE | FINAL: 
                 var variableName:String = parseIdent();
                 if (maybe(LTColon)) parseIdent(); // var:Type
@@ -284,10 +326,7 @@ class Parser {
 
                 deepEnsure(LTKeyWord(IN));
 
-                trace(key, value, token);
-
                 var iterator:Expr = parseExpr();
-
                 ensure(LTCloseP);
 
                 var expr:Expr = parseExpr();
@@ -394,9 +433,14 @@ class Parser {
                 create(ESwitch(expr, cases, defaultExpr));
             default: null;
         }
+
+        #if HSCRIPT_VERBOSE_PARSER
+        trace('parseKeyword($keyword) finished at token: $token (advanced ${token - startToken} tokens)');
+        #end
+        return res;
     }
 
-    private inline function parseIdent():String {
+    private function parseIdent():String {
         var token:LToken = readToken();
         switch (token) {
             case LTIdentifier(identifier): return identifier;
@@ -404,7 +448,7 @@ class Parser {
         }
     }
 
-    private inline function parseClassName():String { // haxe.Unserializer
+    private function parseClassName():String { // haxe.Unserializer
         var identifiers:Array<String> = [];
         identifiers.push(parseIdent());
 
@@ -419,7 +463,7 @@ class Parser {
         return identifiers.join(".");
     }
 
-    private inline function parseParentheses():Array<Expr> {
+    private function parseParentheses():Array<Expr> {
         var args:Array<Expr> = [];
         if (maybe(LTCloseP)) return args;
 
@@ -452,8 +496,11 @@ class Parser {
      * precedence(+) < precedence(*) = restructure
      * Results in: +(2, *(3,4))
      */
-    private inline function parseBinop(op:ExprBinop, left:Expr, right:Expr) {
-        trace(op, left, right);
+    private function parseBinop(op:ExprBinop, left:Expr, right:Expr) {
+        #if HSCRIPT_VERBOSE_PARSER
+        trace('parseBinop() depth: $recursionDepth, op: $op, token: $token/${tokens.length}');
+        trace('leftExpr: $left, rightExpr: $right');
+        #end
         if (right == null) return create(EBinop(op, left, right));
         return switch (right.expr) {
             case EBinop(op2, left2, right2):
@@ -477,7 +524,10 @@ class Parser {
      * For example: -a + b; the parser sees - applied to (a + b), but it should acuttaly be (-a) + b by Haxe language rules.
      * Also: !a ? b : c; parser sees !(a ? b : c), ensure it is correct (!a) ? b : c.
      */
-    private inline function parseUnop(unop:ExprUnop, expr:Expr):Expr {
+    private function parseUnop(unop:ExprUnop, expr:Expr):Expr {
+        #if HSCRIPT_VERBOSE_PARSER
+        trace('parseUnop() depth: $recursionDepth, unop: $unop, token: $token/${tokens.length}');
+        #end
         if (expr == null) return null;
 
         return switch (expr.expr) {
@@ -498,7 +548,7 @@ class Parser {
      *     __a_0.push(i * 2);
      * __a_0;
      */
-    private inline function parseArrayComprehensions(temp:VariableType, expr:Expr):Expr {
+    private function parseArrayComprehensions(temp:VariableType, expr:Expr):Expr {
         if (expr == null) return null;
         
         return switch (expr.expr) {
@@ -513,7 +563,7 @@ class Parser {
         }
     }
 
-    private inline function parseFunctionArgs(?args:Array<Argument>):Array<Argument> {
+    private function parseFunctionArgs(?args:Array<Argument>):Array<Argument> {
         args ??= [];
         if (maybe(LTCloseP)) return args;
 
@@ -540,7 +590,7 @@ class Parser {
         return args;
     }
 
-    private inline function parseObject():Expr {
+    private function parseObject():Expr {
         var fields:Array<ObjectField> = [];
 
         while (true) {
@@ -574,7 +624,7 @@ class Parser {
         return parseNextExpr(create(EObject(fields)));
     }
 
-    private inline function parseBlock(exprs:Array<Expr>) {
+    private function parseBlock(exprs:Array<Expr>) {
         var expr:Expr = parseExpr();
         exprs.push(expr);
 
@@ -585,7 +635,7 @@ class Parser {
             }
     }
 
-    private inline function variableID(string:String):VariableType {
+    private function variableID(string:String):VariableType {
         var varID:VariableType = variablesList.indexOf(string);
         if (varID == -1) {
             variablesList.push(string);
@@ -593,7 +643,7 @@ class Parser {
         } else return varID;
     }
 
-    private inline function create(expr:ExprDef) {
+    private function create(expr:ExprDef) {
         return {
             expr: expr,
             min: exprMin,
@@ -602,7 +652,7 @@ class Parser {
         };
     }
 
-    private inline function isBlock(expr:Expr):Bool {
+    private function isBlock(expr:Expr):Bool {
 		if(expr == null) return false;
 		return switch(expr.expr) {
             case EBlock(_), EObject(_), ESwitch(_): true;
@@ -622,7 +672,7 @@ class Parser {
 		}
 	}
 
-    private inline function maybe(expected:LToken):Bool {
+    private function maybe(expected:LToken):Bool {
         var testToken:LToken = readToken();
         if (!Type.enumEq(expected, testToken)) {
             reverseToken();
@@ -630,44 +680,42 @@ class Parser {
         } else return true;
     }
 
-    private inline function deepEnsure(expected:LToken) {
+    private function deepEnsure(expected:LToken) {
         var testToken:LToken = readToken();
         if (!Type.enumEq(expected, testToken)) unexpected(testToken);
     }
 
-    private inline function ensure(expected:LToken) {
+    private function ensure(expected:LToken) {
         var testToken:LToken = readToken();
         if (expected != testToken) unexpected(testToken);
     }
 
-    private inline function readToken():LToken {
+    private function readToken():LToken {
         if (token >= tokens.length) return LTEof;
-        trace("readToken at " + token + " => " + Std.string(tokens[token].token));
         return tokens[token++].token;
     }
 
-    private inline function readTokenInPlace():LToken {
+    private function readTokenInPlace():LToken {
+        if (token >= tokens.length) return LTEof;
         return tokens[token].token;
     }
 
-    private inline function peekToken():LToken {
-        trace("PEEK at " + token);
-        var t = readToken();
-        reverseToken();
-        return t;
+    private function peekToken():LToken {
+        if (token + 1 >= tokens.length) return LTEof;
+        return tokens[token+1].token;
     }
 
-    private inline function reverseToken() {
+    private function reverseToken() {
         if (token > 0) token--;
         else token = 0;
     }
 
-    private inline function unexpected(token:LToken) {
+    private function unexpected(token:LToken) {
 		error(EUnexpected(Std.string(token)), exprMin, exprMax);
         return null;
 	}
 
-    private inline function error(err:ErrorDef, pmin:Int, pmax:Int) {
+    private function error(err:ErrorDef, pmin:Int, pmax:Int) {
 		throw new Error(err, pmin, pmax, origin, line);
 	}
 }

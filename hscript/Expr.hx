@@ -3,13 +3,13 @@ package hscript;
 import hscript.Lexer.LConst;
 
 #if cpp
-typedef Int8 = cpp.UInt8;
+typedef UInt8 = cpp.UInt8;
 #elseif cs
-typedef Int8 = cs.StdTypes.UInt8;
+typedef UInt8 = cs.StdTypes.UInt8;
 #elseif java
-typedef Int8 = java.types.UInt8;
+typedef UInt8 = java.types.UInt8;
 #else
-typedef Int8 = UInt; // fallback for JS, Python, etc.
+typedef UInt8 = UInt; // fallback for JS, Python, etc.
 #end
 
 typedef Expr = {
@@ -24,7 +24,7 @@ typedef Expr = {
  * It allows us to use a array instead of a map for varaible storage
  * MUCH much faster (supported in hscript-improved with INT_VARS compilier flag, default only option here)
  * 
- * See VariableType and VariableInfo
+ * See VariableType (Int) and VariableInfo (Array<String> to store the names).
  */
 enum ExprDef {
     EConst(c:LConst);
@@ -79,7 +79,7 @@ typedef ObjectField = {
  * Derived from haxe manual:
  * https://haxe.org/manual/expression-operators-binops.html
  */
-enum abstract EBinop(Int8) {
+enum abstract EBinop(UInt8) {
     var ADD:EBinop; // +
     var SUB:EBinop; // -
     var MULT:EBinop; // *
@@ -167,7 +167,7 @@ enum abstract EBinop(Int8) {
  * Derived from haxe manual:
  * https://haxe.org/manual/expression-operators-unops.html
  */
-enum abstract EUnop(Int8) {
+enum abstract EUnop(UInt8) {
     var BitwiseNegation:EUnop; // ~
 
     var LogicalNegation:EUnop; // !

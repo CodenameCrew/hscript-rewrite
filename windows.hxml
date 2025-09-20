@@ -3,4 +3,4 @@ build.hxml
 
 --cpp bin/cpp
 --cmd cd bin/cpp
---cmd Main-debug.exe
+--cmd Main.exe

@@ -1,11 +1,11 @@
 -main Main
 
+--define HXCPP_M64
 --define HXCPP_CHECK_POINTER
 --define HXCPP_STACK_LINE
---define no-debug
---dce no
-
--D HXCPP_STACK_SIZE=8388608
---debug
+--define HXCPP_DEBUG_LINK
 
 --define analyzer-optimize
+
+# -D HSCRIPT_VERBOSE_PARSER
+# -D HSCRIPT_VERBOSE_LEXER

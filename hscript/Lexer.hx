@@ -628,8 +628,15 @@ class Lexer {
         var lexer:Lexer = new Lexer();
         var output:Array<LTokenPos> = lexer.create(input);
 
-        if (output[output.length-1].token != LTEof) // safe gaurd
+        if (output[output.length-1].token != LTEof) // safe gaurd if tokens doesnt end with LTEof
             output.push({token: LTEof, line: output[output.length-1].line, min: output[output.length-1].min, max: output[output.length-1].max});
+
+        #if HSCRIPT_VERBOSE_LEXER
+        trace('Lexer output (length: ${output.length}):');
+        for (i in 0...output.length) {
+            trace(i + " => " + Std.string(output[i].token));
+        }
+        #end
 
         lexer = null;
         return output;
