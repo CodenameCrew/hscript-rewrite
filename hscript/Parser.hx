@@ -51,8 +51,8 @@ class Parser {
         this.tokens = tokens;
 
         for (i in 0...tokens.length) {
-    trace(i + " => " + Std.string(tokens[i].token));
-}
+            trace(i + " => " + Std.string(tokens[i].token));
+        }
 
         var exprs:Array<Expr> = [];
         while (true) {
@@ -63,7 +63,6 @@ class Parser {
     }
 
     @:noInline private function parseExpr():Expr {
-        trace("sdsddd");
         switch (readToken()) {
             case LTOpenP: 
                 if (maybe(LTCloseP)) { // empty args lambda 
@@ -81,7 +80,6 @@ class Parser {
                 }
                 
                 var expr:Expr = parseExpr();
-                trace(expr);
                 switch (readToken()) {
                     case LTCloseP: return parseNextExpr(create(EParent(expr)));
                     case LTColon:
@@ -106,9 +104,9 @@ class Parser {
                 }
 
                 return unexpected(readTokenInPlace());
-            case LTOpenBr: 
+            case LTOpenCB: 
                 switch (readToken()) {
-                    case LTCloseBr: return parseNextExpr(create(EObject(null)));
+                    case LTCloseCB: return parseNextExpr(create(EObject(null)));
                     case LTIdentifier(identifier):
                         var peek:LToken = peekToken();
 
@@ -128,7 +126,7 @@ class Parser {
                                 reverseToken(); // reverse LTIdentifier
                             default: reverseToken(); // reverse LTConst
                         }
-                    default: reverseToken(); // reverse LTOpenBr
+                    default: reverseToken(); // reverse LTOpenCB
                 }
 
                 var exprs:Array<Expr> = [];
@@ -137,14 +135,15 @@ class Parser {
                     if (maybe(LTCloseBr) || maybe(LTEof)) break;
                 }
                 return create(EBlock(exprs));
-            case LTOpenCB: 
+            case LTOpenBr: 
+                trace("sds");
                 var exprs:Array<Expr> = [];
                 while (true) {
                     var expr:Expr = parseExpr();
                     exprs.push(expr);
                     switch (readToken()) {
                         case LTComma:
-                        case LTCloseCB: break;
+                        case LTCloseBr: break;
                         default:
                             unexpected(readTokenInPlace());
                             break;
@@ -167,7 +166,6 @@ class Parser {
                 }
                 return parseNextExpr(create(EArrayDecl(exprs)));
             case LTOp(op):
-                trace("SDs");
                 var unop:ExprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
                 if (op == SUB) { // Arithmetic Negation -123
                     var expr:Expr = parseExpr();
@@ -198,7 +196,6 @@ class Parser {
     }
 
     private function parseNextExpr(prev:Expr):Expr {
-        trace("sdagfhhh");
         switch (readToken()) {
             case LTOp(op):
                 if (op == FUNCTION_ARROW) { // Single arg reinterpretation of `f -> e` , `(f) -> e`
@@ -286,6 +283,8 @@ class Parser {
                     value = parseIdent();
 
                 deepEnsure(LTKeyWord(IN));
+
+                trace(key, value, token);
 
                 var iterator:Expr = parseExpr();
 

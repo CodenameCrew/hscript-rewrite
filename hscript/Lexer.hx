@@ -341,10 +341,11 @@ class Lexer {
                                 if (exp > 0) { // in case of '0...'
                                     charCode = readCharacter();
                                     if (exp == 10 && charCode == ".".code) {
-                                        push(LTOp(INTERVAL));
+                                        character -= 3; // send back to ".".code switch statement to be parsed as a INTERVAL Op
+                                        
                                         var i:Int = Std.int(n);
                                         return LTConst((i == n) ? LCInt(i) : LCFloat(n));
-                                    }
+                                    } else character--;
                                     invalidChar(charCode);
                                 }
 						        exp = 1;
