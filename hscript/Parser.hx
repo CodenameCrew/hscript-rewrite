@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Expr.EImportMode;
 import hscript.Expr.ObjectField;
 import hscript.Expr.EUnop as ExprUnop;
 import hscript.Expr.EBinop as ExprBinop;
@@ -493,6 +494,28 @@ class Parser {
                     case LTKeyWord(FINAL): parseKeyword(FINAL);
                     default: unexpected();
                 }
+            case IMPORT:
+                var mode:EImportMode = Normal;
+                var identifiers:Array<String> = [];
+                identifiers.push(parseIdent());
+
+                while (true) {
+                    switch (readToken()) {
+                        case LTKeyWord(AS): 
+                            var name:String = parseIdent();
+                            mode = As(name);
+                        case LTSemiColon: break;
+                        case LTDot: 
+                            switch (readToken()) {
+                                case LTIdentifier(identifier): identifiers.push(identifier);
+                                case LTOp(MULT): mode = All;
+                                default: unexpected(); break;
+                            }
+                        default: unexpected(); break;
+                    }
+                }
+
+                create(EImport(identifiers.join("."), mode));
             default: null;
         }
 

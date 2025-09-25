@@ -178,6 +178,7 @@ enum abstract LOp(String) from String to String {
  * With expections to type creation.
  */
 enum abstract LKeyword(String) from String {
+    var AS:LKeyword = "as";
     var BREAK:LKeyword = "break";
     var CASE:LKeyword = "case";
     var CAST:LKeyword = "cast";
@@ -210,7 +211,7 @@ enum abstract LKeyword(String) from String {
     var WHILE:LKeyword = "while";
 
     public static final ALL_KEYWORDS:Array<LKeyword> = [
-        BREAK, CASE, CAST, CATCH, CONTINUE, DEFAULT, DO, ELSE,
+        AS, BREAK, CASE, CAST, CATCH, CONTINUE, DEFAULT, DO, ELSE,
         FALSE, FINAL, FOR, FUNCTION, IF, IMPORT, IN, INLINE,
         NEW, NULL, OVERRIDE, PRIVATE, PUBLIC, RETURN, STATIC, 
         SWITCH, THIS, TRUE, TRY, VAR, WHILE
