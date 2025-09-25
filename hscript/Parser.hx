@@ -1,6 +1,5 @@
 package hscript;
 
-import hscript.Ast.EUnop;
 import hscript.Ast.Expr;
 import hscript.Ast.EBinop;
 import hscript.Ast.EImportMode;
@@ -181,10 +180,8 @@ class Parser {
                 }
                 return parseNextExpr(create(EArrayDecl(exprs)));
             case LTOp(op):
-                var isUnop:Bool = LOp.ALL_LUNOPS.indexOf(op) != -1;
-
-                if (isUnop) {
-                    var unop:EUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
+                if (LOp.ALL_LUNOPS.indexOf(op) != -1) { // Parse unops (!, -, ~, ++, --)
+                    var unop:ExprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
                     if (op == SUB) { // Arithmetic Negation -123
                         var expr:Expr = parseExpr();
                         if (expr == null) return parseUnop(unop, expr);
@@ -218,8 +215,8 @@ class Parser {
             case LTOp(op):
                 var isBinop:Bool = LOp.ALL_LUNOPS.indexOf(op) == -1;
 
-                var exprOp:EBinop = ADD;
-                var exprUnop:EUnop = NOT;
+                var exprOp:ExprBinop = ADD;
+                var exprUnop:ExprUnop = NOT;
 
                 if (isBinop) exprOp = LOp.LEXER_TO_EXPR_OP.get(op);
                 else exprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);

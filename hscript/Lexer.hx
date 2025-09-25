@@ -113,7 +113,7 @@ enum abstract LOp(String) from String to String {
         LOOKUP_MAP;
     }
 
-    // Not used that much so no need for hashmap
+    // Not used that much so no need for hashmap (hash map wouldn't make a difference, array has 4 elements)
     public static final ALL_LUNOPS:Array<LOp> = [
         NOT, NOT_BITWISE, INCREMENT, DECREMENT,
     ];
@@ -241,7 +241,7 @@ enum LConst {
 }
 
 /**
- * Tokenizing heavily based off https://github.com/HaxeFoundation/hscript/blob/master/hscript/Parser.hx
+ * Tokenizing heavily based off https://github.com/HaxeFoundation/hscript/blob/master/hscript/Parser.hx.
  */
 class Lexer {
     public static final IDENTIFIER_CHARS:String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
