@@ -299,7 +299,7 @@ class Parser {
         var startToken = token;
         #end
         #if HSCRIPT_VERBOSE_PARSER var res = #else return #end switch (keyword) {
-            case VAR | INLINE | FINAL: 
+            case VAR | FINAL: 
                 var variableName:String = parseIdent();
                 if (maybe(LTColon)) parseIdent(); // var:Type
 
@@ -715,32 +715,32 @@ class Parser {
         if (expectedToken != testToken) expected(expectedToken);
     }
 
-    private function readToken():LToken {
+    private inline function readToken():LToken {
         if (token >= tokens.length) return LTEof;
         return tokens[token++].token;
     }
 
-    private function readTokenInPlace():LToken {
+    private inline function readTokenInPlace():LToken {
         if (token - 1 < 0 ||  token - 1 >= tokens.length) return LTEof;
         return tokens[token-1].token;
     }
 
-    private function peekToken():LToken {
+    private inline function peekToken():LToken {
         if (token >= tokens.length) return LTEof;
         return tokens[token].token;
     }
 
-    private function reverseToken() {
+    private inline function reverseToken() {
         if (token > 0) token--;
         else token = 0;
     }
 
-    private function readPosition():LTokenPos {
+    private inline function readPosition():LTokenPos {
         if (token - 1 < 0 ||  token - 1 >= tokens.length) return {token: LTEof, min: 0, max: 0, line: 0};
         return tokens[token-1];
     }
 
-    private function readLine():Int {
+    private inline function readLine():Int {
         if (token - 1 < 0 ||  token - 1 >= tokens.length) return 0;
         return tokens[token-1].line;
     }
