@@ -220,7 +220,7 @@ enum abstract LKeyword(String) from String {
         AS, BREAK, CASE, CAST, CATCH, CONTINUE, DEFAULT, DO, ELSE,
         FALSE, FINAL, FOR, FUNCTION, IF, IMPORT, IN, INLINE,
         NEW, NULL, OVERRIDE, PRIVATE, PUBLIC, RETURN, STATIC, 
-        SWITCH, THIS, TRUE, TRY, VAR, WHILE
+        SWITCH, THIS, THROW, TRUE, TRY, VAR, WHILE
     ];
 
     // Hashmap under the hood, faster then doing ALL_KEYWORDS.indexOf(string) != -1 (linear scan across array) -lunar
@@ -640,7 +640,7 @@ class Lexer {
         if (output[output.length-1].token != LTEof) // safe gaurd if tokens doesnt end with LTEof
             output.push({token: LTEof, line: output[output.length-1].line, min: output[output.length-1].min, max: output[output.length-1].max});
 
-        /**
+        /*
         trace('Lexer output (length: ${output.length}):');
         for (i in 0...output.length) {
             trace(i + " => " + Std.string(output[i].token), output[i].min, output[i].max);

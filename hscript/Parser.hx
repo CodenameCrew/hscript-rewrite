@@ -125,23 +125,20 @@ class Parser {
 
                 return unexpected();
             case LTOpenCB: 
-                var nextToken:LToken = readTokenInPlace();
+                var nextToken:LToken = readToken();
                 var isObject:Bool = false;
 
-                if (nextToken == LTCloseCB) { // Empty object {}
-                    readToken();
-                    return parseNextExpr(create(EObject(null)));
-                } else if (nextToken.match(LTIdentifier(_))) { // {var:
-                    var peekToken:LToken = peekToken();
-                    if (peekToken == LTColon) isObject = true;
-                } else if (nextToken.match(LTConst(LCString(_)))) { // {"var":
-                    var peekToken:LToken = peekToken();
-                    if (peekToken == LTColon) isObject = true;
+                switch (nextToken) {
+                    case LTCloseCB: return parseNextExpr(create(EObject(null))); // {} empty oject
+                    case LTIdentifier(_) | LTConst(LCString(_)): // {var: AND {"var":
+                        var peekToken:LToken = peekToken();
+                        if (peekToken == LTColon) isObject = true;
+                        reverseToken(); // revert var
+                    default: reverseToken();
                 }
 
-                if (isObject) 
-                    return parseObject();
-                else { // Parse as code block
+                if (isObject) return parseObject();
+                else { // parse as code block
                     var exprs:Array<Expr> = [];
                     while (true) {
                         if (peekToken() == LTCloseCB || peekToken() == LTEof) break;
@@ -152,6 +149,9 @@ class Parser {
                 }
             case LTOpenBr: 
                 var exprs:Array<Expr> = [];
+                if (maybe(LTCloseBr)) // empty array []
+                    return parseNextExpr(create(EArrayDecl([])));
+
                 while (true) {
                     var expr:Expr = parseExpr();
                     exprs.push(expr);
@@ -199,7 +199,9 @@ class Parser {
             case LTIdentifier(identifier): return parseNextExpr(create(EIdent(variableID(identifier))));
             case LTConst(const): return parseNextExpr(create(EConst(const)));
             case LTMeta(meta):
-                var args:Array<Expr> = parseParentheses();
+                var args:Array<Expr> = null;
+                if (maybe(LTOpenP)) args = parseParentheses();
+                
                 var expr:Expr = parseExpr();
 
                 return create(EMeta(meta, args, expr));
@@ -245,7 +247,11 @@ class Parser {
                 var expr:Expr = parseExpr();
                 return parseBinop(LOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
             case LTDot | LTQuestionDot:
-                var fieldName:String = parseIdent();
+                var fieldName:String = switch (readToken()) {
+                    case LTIdentifier(identifier): identifier;
+                    case LTKeyWord(keyword): cast keyword;
+                    default: unexpected();
+                };
                 return parseNextExpr(create(EField(prev, fieldName, readTokenInPlace() == LTQuestionDot)));
             case LTOpenP: return parseNextExpr(create(ECall(prev, parseParentheses())));
             case LTOpenBr: // array/map access arr[0]
@@ -342,8 +348,6 @@ class Parser {
                 var args:Array<Expr> = parseParentheses();
 
                 create(ENew(variableID(className), args));
-            case THROW:
-                create(EThrow(parseExpr()));
             case TRY:
                 var expr:Expr = parseExpr();
                 var varName:String = null;
@@ -480,7 +484,10 @@ class Parser {
                 }
 
                 create(EImport(identifiers.join("."), mode));
-            default: null;
+            case THROW: create(EThrow(parseExpr()));
+            default: 
+                // parse keywords like null and static as variables because they are used like that sometimes -lunar
+                create(EIdent(variableID(cast keyword)));
         }
     }
 
@@ -639,7 +646,6 @@ class Parser {
                         case LCString(string): fieldName = string;
                         default: unexpected();
                     }
-                case LTCloseBr: break;
                 default:
                     unexpected();
                     break;
@@ -650,7 +656,7 @@ class Parser {
             fields.push({name: fieldName, expr: expr});
 
             switch (readToken()) {
-                case LTCloseBr: break;
+                case LTCloseCB: break;
                 case LTComma:
                 default: 
                     unexpected();
@@ -762,7 +768,7 @@ class Parser {
         return null;
 	}
 
-    private function unexpected() {
+    private function unexpected():Null<Dynamic> {
         var currentToken:LTokenPos = readPosition();
 		error(EUnexpected(Std.string(currentToken.token)), currentToken.min, currentToken.max, currentToken.line);
         return null;

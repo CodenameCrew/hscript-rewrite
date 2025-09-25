@@ -9,7 +9,7 @@ class Main {
     public static function main() {
         try {
             var parser = new Parser();
-            var expr = parser.parseString("!a;--s;");
+            var expr = parser.parseString("@:fun(t) trace();");
             trace(expr);
         } catch (e:Dynamic) {
             trace(e, CallStack.toString(CallStack.exceptionStack()));
