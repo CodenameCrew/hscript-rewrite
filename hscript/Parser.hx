@@ -6,7 +6,7 @@ import hscript.Ast.EImportMode;
 import hscript.Ast.ObjectField;
 import hscript.Ast.EUnop as ExprUnop;
 import hscript.Ast.EBinop as ExprBinop;
-import hscript.Lexer.LOp;
+import hscript.Lexer.LOp as LexerOp;
 import hscript.Ast.SwitchCase;
 import hscript.Ast.Argument;
 import hscript.Ast.VariableType;
@@ -180,8 +180,8 @@ class Parser {
                 }
                 return parseNextExpr(create(EArrayDecl(exprs)));
             case LTOp(op):
-                if (LOp.ALL_LUNOPS.indexOf(op) != -1) { // Parse unops (!, -, ~, ++, --)
-                    var unop:ExprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
+                if (LexerOp.ALL_LUNOPS.indexOf(op) != -1) { // Parse unops (!, -, ~, ++, --)
+                    var unop:ExprUnop = LexerOp.LEXER_TO_EXPR_UNOP.get(op);
                     if (op == SUB) { // Arithmetic Negation -123
                         var expr:Expr = parseExpr();
                         if (expr == null) return parseUnop(unop, expr);
@@ -201,7 +201,7 @@ class Parser {
             case LTMeta(meta):
                 var args:Array<Expr> = null;
                 if (maybe(LTOpenP)) args = parseParentheses();
-                
+
                 var expr:Expr = parseExpr();
 
                 return create(EMeta(meta, args, expr));
@@ -215,13 +215,13 @@ class Parser {
     private function parseNextExpr(prev:Expr):Expr {
         switch (readToken()) {
             case LTOp(op):
-                var isBinop:Bool = LOp.ALL_LUNOPS.indexOf(op) == -1;
+                var isBinop:Bool = LexerOp.ALL_LUNOPS.indexOf(op) == -1;
 
                 var exprOp:ExprBinop = ADD;
                 var exprUnop:ExprUnop = NOT;
 
-                if (isBinop) exprOp = LOp.LEXER_TO_EXPR_OP.get(op);
-                else exprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
+                if (isBinop) exprOp = LexerOp.LEXER_TO_EXPR_OP.get(op);
+                else exprUnop = LexerOp.LEXER_TO_EXPR_UNOP.get(op);
 
                 var precedence:Int = ExprBinop.OP_PRECEDENCE_LOOKUP[cast exprOp];
 
@@ -245,7 +245,7 @@ class Parser {
                 }
 
                 var expr:Expr = parseExpr();
-                return parseBinop(LOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
+                return parseBinop(LexerOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
             case LTDot | LTQuestionDot:
                 var fieldName:String = switch (readToken()) {
                     case LTIdentifier(identifier): identifier;
