@@ -20,6 +20,9 @@ class Parser {
     private var variablesList:Array<String> = [];
     private var uniqueID:Int = 0;
 
+    private var publicModifier:Bool = false;
+    private var staticModifier:Bool = false;
+
     public var origin:String = null;
     
     #if HSCRIPT_VERBOSE_PARSER
@@ -306,7 +309,7 @@ class Parser {
                 var assign:Expr = null; // var = ;
                 if (maybe(LTOp(ASSIGN))) assign = parseExpr();
 
-                create(EVar(variableID(variableName), assign, false, false));
+                create(EVar(variableID(variableName), assign, publicModifier, staticModifier));
             case IF:
                 ensure(LTOpenP);
                 var condition:Expr = parseExpr();
@@ -366,7 +369,7 @@ class Parser {
                 if(maybe(LTColon)) parseIdent(); // function ():Type
 
                 var expr:Expr = parseExpr();
-                create(EFunction(args, expr, variableID(functionName), false, false, false));
+                create(EFunction(args, expr, variableID(functionName), publicModifier, staticModifier));
             case RETURN:
                 create(EReturn(maybe(LTSemiColon) ? null : parseExpr()));
             case NEW:
@@ -457,6 +460,28 @@ class Parser {
                 }
 
                 create(ESwitch(expr, filteredCases, defaultExpr));
+            case STATIC: 
+                staticModifier = true;
+                var modifierExpr:Expr = switch (readToken()) {
+                    case LTKeyWord(PUBLIC): parseKeyword(PUBLIC);
+                    case LTKeyWord(FUNCTION): parseKeyword(FUNCTION);
+                    case LTKeyWord(VAR): parseKeyword(VAR);
+                    case LTKeyWord(FINAL): parseKeyword(FINAL);
+                    default: unexpected();
+                }
+                staticModifier = false;
+                modifierExpr;
+            case PUBLIC: 
+                publicModifier = true;
+                var modifierExpr:Expr = switch (readToken()) {
+                    case LTKeyWord(STATIC): parseKeyword(STATIC);
+                    case LTKeyWord(FUNCTION): parseKeyword(FUNCTION);
+                    case LTKeyWord(VAR): parseKeyword(VAR);
+                    case LTKeyWord(FINAL): parseKeyword(FINAL);
+                    default: unexpected();
+                }
+                publicModifier = false;
+                modifierExpr;
             default: null;
         }
 

@@ -30,7 +30,7 @@ enum ExprDef {
     EVar(name:VariableType, ?init:Expr, ?isPublic:Bool, ?isStatic:Bool);
     EParent(expr:Expr); // ()
     EBlock(exprs:Array<Expr>); // { ... }
-    EField(expr:Expr, field:String, ?safe:Bool);
+    EField(expr:Expr, field:String, ?isSafe:Bool);
     EBinop(op:EBinop, left:Expr, right:Expr);
     EUnop(op:EUnop, isPrefix:Bool, expr:Expr);
     ECall(func:Expr, args:Array<Expr>);
@@ -40,7 +40,7 @@ enum ExprDef {
     EForKeyValue(key:VariableType, value:VariableType, iterator:Expr, body:Expr);
     EBreak;
     EContinue;
-    EFunction(args:Array<Argument>, body:Expr, ?name:VariableType, ?isPublic:Bool, ?isStatic:Bool, ?isOverride:Bool);
+    EFunction(args:Array<Argument>, body:Expr, ?name:VariableType, ?isPublic:Bool, ?isStatic:Bool);
     EReturn(?expr:Expr);
     EArray(expr:Expr, index:Expr); // arr[i]
     EMapDecl(keys:Array<Expr>, values:Array<Expr>);
