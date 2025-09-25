@@ -28,7 +28,6 @@ class Parser {
 
     public var origin:String = null;
     
-
     public function new(?origin:String) {
         this.origin = origin ?? "";
     }
@@ -215,33 +214,21 @@ class Parser {
     private function parseNextExpr(prev:Expr):Expr {
         switch (readToken()) {
             case LTOp(op):
-                var isBinop:Bool = LexerOp.ALL_LUNOPS.indexOf(op) == -1;
-
-                var exprOp:ExprBinop = ADD;
-                var exprUnop:ExprUnop = NOT;
-
-                if (isBinop) exprOp = LexerOp.LEXER_TO_EXPR_OP.get(op);
-                else exprUnop = LexerOp.LEXER_TO_EXPR_UNOP.get(op);
-
-                var precedence:Int = ExprBinop.OP_PRECEDENCE_LOOKUP[cast exprOp];
-
-                if (!isBinop) {
-                    if (isBlock(prev) || prev.expr.match(EParent(_))) {
-                        reverseToken();
-                        return prev;
-                    }
-                    return parseNextExpr(create(EUnop(exprUnop, false, prev)));
-                }
-
-                if (op == FUNCTION_ARROW) { // Single arg reinterpretation of `f -> e` , `(f) -> e`
+                if (op == FUNCTION_ARROW) { // single arg reinterpretation of `f -> e` , `(f) -> e`
                     switch (prev.expr) {
                         case EIdent(name), EParent(_.expr => EIdent(name)):
                             var expr:Expr = parseExpr();
                             return create(EFunction(null, expr));
-                        default:
+                        default: unexpected();
                     }
+                }
 
-                    unexpected();
+                if (LexerOp.ALL_LUNOPS.indexOf(op) != -1) {
+                    if (isBlock(prev) || prev.expr.match(EParent(_))) {
+                        reverseToken(); // dont attach unary!!! 
+                        return prev;
+                    }
+                    return parseNextExpr(create(EUnop(LexerOp.LEXER_TO_EXPR_UNOP.get(op), false, prev)));
                 }
 
                 var expr:Expr = parseExpr();
@@ -287,6 +274,7 @@ class Parser {
                 ensure(LTCloseP);
 
                 var expr:Expr = parseExpr();
+                maybe(LTSemiColon);
 
                 var elseExpr:Expr = null;
                 if (maybe(LTKeyWord(ELSE)))

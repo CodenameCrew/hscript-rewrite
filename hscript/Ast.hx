@@ -19,7 +19,7 @@ typedef Expr = {
 
 /**
  * EInfo will ALWAYS be the first expr.
- * It allows us to use a array instead of a map for varaible storage
+ * It allows us to use a array instead of a map for varaible storage.
  * MUCH much faster (supported in hscript-improved with INT_VARS compilier flag, default only option here)
  * 
  * See VariableType (Int) and VariableInfo (Array<String> to store the names).
