@@ -166,13 +166,13 @@ enum abstract EBinop(UInt8) {
  * https://haxe.org/manual/expression-operators-unops.html
  */
 enum abstract EUnop(UInt8) {
-    var BitwiseNegation:EUnop; // ~
+    var NEG_BIT:EUnop; // ~
 
-    var LogicalNegation:EUnop; // !
-    var ArithmeticNegation:EUnop; // -
+    var NOT:EUnop; // !
+    var NEG:EUnop; // -
 
-    var Increment:EUnop; // ++
-    var Decrement:EUnop; // --
+    var INC:EUnop; // ++
+    var DEC:EUnop; // --
 }
 
 enum EImportMode {

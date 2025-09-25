@@ -9,7 +9,7 @@ class Main {
     public static function main() {
         try {
             var parser = new Parser();
-            var expr = parser.parseString("import haxe.Json as COOL;");
+            var expr = parser.parseString("!a;");
             trace(expr);
         } catch (e:Dynamic) {
             trace(e, CallStack.toString(CallStack.exceptionStack()));

@@ -99,6 +99,7 @@ enum abstract LOp(String) from String to String {
         ADD_ASSIGN, SUB_ASSIGN, MULT_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,
         SHL_ASSIGN, SHR_ASSIGN, USHR_ASSIGN,
         OR_ASSIGN, AND_ASSIGN, XOR_ASSIGN, NCOAL_ASSIGN,
+        NOT, NOT_BITWISE, INCREMENT, DECREMENT,
         COMMENT, COMMENT_OPEN, COMMENT_CLOSE
     ];
 
@@ -111,6 +112,11 @@ enum abstract LOp(String) from String to String {
 
         LOOKUP_MAP;
     }
+
+    // Not used that much so no need for hashmap
+    public static final ALL_LUNOPS:Array<LOp> = [
+        NOT, NOT_BITWISE, INCREMENT, DECREMENT,
+    ];
 
     /**
      * Boiler plate for parser...
@@ -161,13 +167,13 @@ enum abstract LOp(String) from String to String {
     ];
 
     public static final LEXER_TO_EXPR_UNOP:Map<LOp, EUnop> = [
-        LOp.NOT_BITWISE => EUnop.BitwiseNegation,
+        LOp.NOT_BITWISE => EUnop.NEG_BIT,
 
-        LOp.NOT => EUnop.LogicalNegation,
-        LOp.SUB => EUnop.ArithmeticNegation,
+        LOp.NOT => EUnop.NOT,
+        LOp.SUB => EUnop.NEG,
 
-        LOp.INCREMENT => EUnop.Increment,
-        LOp.DECREMENT => EUnop.Decrement
+        LOp.INCREMENT => EUnop.INC,
+        LOp.DECREMENT => EUnop.DEC
     ];
 }
 

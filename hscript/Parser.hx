@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Ast.EUnop;
 import hscript.Ast.Expr;
 import hscript.Ast.EBinop;
 import hscript.Ast.EImportMode;
@@ -180,20 +181,22 @@ class Parser {
                 }
                 return parseNextExpr(create(EArrayDecl(exprs)));
             case LTOp(op):
-                var unop:ExprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
-                if (op == SUB) { // Arithmetic Negation -123
-                    var expr:Expr = parseExpr();
-                    if (expr == null) return parseUnop(unop, expr);
+                var isUnop:Bool = LOp.ALL_LUNOPS.indexOf(op) != -1;
 
-                    return switch (expr.expr) {
-                        case EConst(LCInt(int)): create(EConst(LCInt(-int)));
-                        case EConst(LCFloat(int)): create(EConst(LCFloat(-int)));
-                        default: parseUnop(unop, expr);
+                if (isUnop) {
+                    var unop:EUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
+                    if (op == SUB) { // Arithmetic Negation -123
+                        var expr:Expr = parseExpr();
+                        if (expr == null) return parseUnop(unop, expr);
+
+                        return switch (expr.expr) {
+                            case EConst(LCInt(int)): create(EConst(LCInt(-int)));
+                            case EConst(LCFloat(int)): create(EConst(LCFloat(-int)));
+                            default: parseUnop(unop, expr);
+                        }
                     }
+                    return parseUnop(unop, parseExpr());
                 }
-
-                if (ExprBinop.OP_PRECEDENCE_LOOKUP[cast unop] < 0) return parseUnop(unop, parseExpr());
-
                 return unexpected();
             case LTKeyWord(keyword): return parseNextExpr(parseKeyword(keyword));
             case LTIdentifier(identifier): return parseNextExpr(create(EIdent(variableID(identifier))));
@@ -213,8 +216,23 @@ class Parser {
     private function parseNextExpr(prev:Expr):Expr {
         switch (readToken()) {
             case LTOp(op):
-                var exprOp:EBinop = LOp.LEXER_TO_EXPR_OP.get(op);
+                var isBinop:Bool = LOp.ALL_LUNOPS.indexOf(op) == -1;
+
+                var exprOp:EBinop = ADD;
+                var exprUnop:EUnop = NOT;
+
+                if (isBinop) exprOp = LOp.LEXER_TO_EXPR_OP.get(op);
+                else exprUnop = LOp.LEXER_TO_EXPR_UNOP.get(op);
+
                 var precedence:Int = ExprBinop.OP_PRECEDENCE_LOOKUP[cast exprOp];
+
+                if (!isBinop) {
+                    if (isBlock(prev) || prev.expr.match(EParent(_))) {
+                        reverseToken();
+                        return prev;
+                    }
+                    return parseNextExpr(create(EUnop(exprUnop, false, prev)));
+                }
 
                 if (op == FUNCTION_ARROW) { // Single arg reinterpretation of `f -> e` , `(f) -> e`
                     switch (prev.expr) {
@@ -225,15 +243,6 @@ class Parser {
                     }
 
                     unexpected();
-                }
-
-                if (precedence == -1) {
-                    var unop = LOp.LEXER_TO_EXPR_UNOP.get(op);
-                    if (isBlock(prev) || prev.expr.match(EParent(_))) {
-                        reverseToken();
-                        return prev;
-                    }
-                    return parseNextExpr(create(EUnop(unop, false, prev)));
                 }
 
                 var expr:Expr = parseExpr();
