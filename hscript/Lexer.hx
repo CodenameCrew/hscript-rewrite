@@ -499,7 +499,7 @@ class Lexer {
         return null;
     }
 
-    inline function push(ltoken:LToken) {
+    private inline function push(ltoken:LToken) {
 		tokens.push({
             token : ltoken, 
             min : tokenMin, 
@@ -508,7 +508,7 @@ class Lexer {
         });
 	}
 
-    inline function readString(untilCharCode:Int) {
+    private inline function readString(untilCharCode:Int) {
 		var c:Int = 0;
 		var b:StringBuf = new StringBuf();
 		var esc:Bool = false;
@@ -563,7 +563,7 @@ class Lexer {
 		return b.toString();
 	}
 
-    inline function comment(op:String, charCode:Int) {
+    private inline function comment(op:String, charCode:Int) {
 		var secondCharCode:Int = op.charCodeAt(1);
 
 		if (secondCharCode == '/'.code) { // comment
@@ -608,16 +608,16 @@ class Lexer {
 		return LTOp(op);
 	}
 
-    inline function invalidChar(c) {
+    private inline function readCharacter() {
+		return StringTools.fastCodeAt(input, character++);
+	}
+
+    private inline function invalidChar(c) {
         error(EInvalidChar(c), character-1, character-1);
     }
 
-    inline function error(err:ErrorDef, pmin:Int, pmax:Int) {
+    private inline function error(err:ErrorDef, pmin:Int, pmax:Int) {
 		throw new Error(err, pmin, pmax, origin, line);
-	}
-
-    inline function readCharacter() {
-		return StringTools.fastCodeAt(input, character++);
 	}
 
     /**
