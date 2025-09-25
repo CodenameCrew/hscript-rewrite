@@ -196,6 +196,7 @@ enum abstract LKeyword(String) from String {
     var INLINE:LKeyword = "inline";
     var NEW:LKeyword = "new";
     var NULL:LKeyword = "null";
+    var OVERRIDE:LKeyword = "override";
     var PRIVATE:LKeyword = "private";
     var PUBLIC:LKeyword = "public";
     var RETURN:LKeyword = "return";
@@ -211,8 +212,8 @@ enum abstract LKeyword(String) from String {
     public static final ALL_KEYWORDS:Array<LKeyword> = [
         BREAK, CASE, CAST, CATCH, CONTINUE, DEFAULT, DO, ELSE,
         FALSE, FINAL, FOR, FUNCTION, IF, IMPORT, IN, INLINE,
-        NEW, NULL, PRIVATE, PUBLIC, RETURN, STATIC, SWITCH,
-        THIS, TRUE, TRY, VAR, WHILE
+        NEW, NULL, OVERRIDE, PRIVATE, PUBLIC, RETURN, STATIC, 
+        SWITCH, THIS, TRUE, TRY, VAR, WHILE
     ];
 
     // Hashmap under the hood, faster then doing ALL_KEYWORDS.indexOf(string) != -1 (linear scan across array) -lunar

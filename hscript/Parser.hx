@@ -465,6 +465,7 @@ class Parser {
                 var modifierExpr:Expr = switch (readToken()) {
                     case LTKeyWord(PUBLIC): parseKeyword(PUBLIC);
                     case LTKeyWord(FUNCTION): parseKeyword(FUNCTION);
+                    case LTKeyWord(OVERRIDE): parseKeyword(OVERRIDE);
                     case LTKeyWord(VAR): parseKeyword(VAR);
                     case LTKeyWord(FINAL): parseKeyword(FINAL);
                     default: unexpected();
@@ -476,12 +477,22 @@ class Parser {
                 var modifierExpr:Expr = switch (readToken()) {
                     case LTKeyWord(STATIC): parseKeyword(STATIC);
                     case LTKeyWord(FUNCTION): parseKeyword(FUNCTION);
+                    case LTKeyWord(OVERRIDE): parseKeyword(OVERRIDE);
                     case LTKeyWord(VAR): parseKeyword(VAR);
                     case LTKeyWord(FINAL): parseKeyword(FINAL);
                     default: unexpected();
                 }
                 publicModifier = false;
                 modifierExpr;
+            case OVERRIDE:
+                switch (readToken()) {
+                    case LTKeyWord(PUBLIC): parseKeyword(STATIC);
+                    case LTKeyWord(STATIC): parseKeyword(STATIC);
+                    case LTKeyWord(FUNCTION): parseKeyword(FUNCTION);
+                    case LTKeyWord(VAR): parseKeyword(VAR);
+                    case LTKeyWord(FINAL): parseKeyword(FINAL);
+                    default: unexpected();
+                }
             default: null;
         }
 
