@@ -28,7 +28,7 @@ class Parser {
     
     #if HSCRIPT_VERBOSE_PARSER
     private var recursionDepth:Int = 0;
-    private var maxRecursionDepth:Int = 20;
+    private var maxRecursionDepth:Int = 0;
     #end
 
     public function new(?origin:String) {
@@ -58,7 +58,7 @@ class Parser {
         #if HSCRIPT_VERBOSE_PARSER
         trace('Starting parse with ${tokens.length} tokens');
         recursionDepth = 0;
-        maxRecursionDepth = 20;
+        maxRecursionDepth = 100;
         #end
 
         var exprs:Array<Expr> = [];
@@ -74,9 +74,10 @@ class Parser {
         recursionDepth++;
         if (recursionDepth > maxRecursionDepth) {
             maxRecursionDepth = recursionDepth;
-            trace('MAX RECURSION DEPTH: $maxRecursionDepth at token $token/${tokens.length}');
+            trace('MAX RECURSION DEPTH: $maxRecursionDepth at token $token/${tokens.length} ${readTokenInPlace()}');
+            error(ECustom("Stack overflow"), exprMin, exprMax);
         }
-        trace('parseExpr() depth: $recursionDepth, token: $token/${tokens.length}');
+        trace('parseExpr() depth: $recursionDepth, token: $token/${tokens.length} ${readTokenInPlace()}');
         #end
         
         switch (readToken()) {
@@ -88,7 +89,11 @@ class Parser {
                 }
 
                 inline function parseLambda(args:Array<Argument>) {
-                    var args:Array<Argument> = parseFunctionArgs(args);
+                    var args:Array<Argument> = args;
+
+                    if (maybe(LTComma)) args = parseFunctionArgs(args);
+                    else deepEnsure(LTCloseP);
+
                     deepEnsure(LTOp(FUNCTION_ARROW));
 
                     var expr:Expr = parseExpr();
@@ -99,20 +104,37 @@ class Parser {
                 switch (readToken()) {
                     case LTCloseP: return parseNextExpr(create(EParent(expr)));
                     case LTColon:
-                        parseIdent(); // ):Type
+                        parseIdent(); // :Type
 
                         switch (readToken()) {
-                            case LTCloseP: return parseNextExpr(expr);
+                            case LTCloseP:
+                                reverseToken();
+                                switch (expr.expr) {
+                                    case EIdent(name): return parseLambda([{name: name}]);
+                                    default:
+                                }
                             case LTComma: 
+                                reverseToken();
                                 switch (expr.expr) {
                                     case EIdent(name): return parseLambda([{name: name}]);
                                     default:
                                 }
                             default:
                         }
-                    case LTComma: 
+                    case LTComma:
+                        reverseToken();
                         switch (expr.expr) {
                             case EIdent(name): return parseLambda([{name: name}]);
+                            default:
+                        }
+                    case LTIdentifier(identifier):
+                        if (expr == null) {
+                            if (maybe(LTColon)) parseIdent(); // (?arg:Int)
+                            return parseLambda([{name: variableID(identifier), opt: true}]);
+                        }
+
+                        switch (expr.expr) {
+                            case EIdent(name): return parseLambda([{name: name, opt: true}]);
                             default:
                         }
                     case LTEof: return expr;
@@ -121,36 +143,31 @@ class Parser {
 
                 return unexpected(readTokenInPlace());
             case LTOpenCB: 
-                switch (readToken()) {
-                    case LTCloseCB: return parseNextExpr(create(EObject(null)));
-                    case LTIdentifier(identifier):
-                        var peek:LToken = peekToken();
+                var nextToken:LToken = readTokenInPlace();
+                var isObject:Bool = false;
 
-                        reverseToken(); // reverse Peek Token
-                        reverseToken(); // reverse LTIdentifier
-
-                        if (peek == LTColon) parseObject();
-                    case LTConst(const):
-                        switch (const) {
-                            case LCString(string):
-                                var peek:LToken = peekToken();
-
-                                reverseToken(); // reverse Peek Token
-                                reverseToken(); // reverse LTIdentifier
-                                
-                                if (peek == LTColon) parseObject();
-                                reverseToken(); // reverse LTIdentifier
-                            default: reverseToken(); // reverse LTConst
-                        }
-                    default: reverseToken(); // reverse LTOpenCB
+                if (nextToken == LTCloseCB) { // Empty object {}
+                    readToken(); // Consume LTCloseCB
+                    return parseNextExpr(create(EObject(null)));
+                } else if (nextToken.match(LTIdentifier(_))) { // {var:
+                    var peekToken:LToken = peekToken();
+                    if (peekToken == LTColon) isObject = true;
+                } else if (nextToken.match(LTConst(LCString(_)))) { // {"var":
+                    var peekToken:LToken = peekToken();
+                    if (peekToken == LTColon) isObject = true;
                 }
 
-                var exprs:Array<Expr> = [];
-                while (true) {
-                    parseBlock(exprs);
-                    if (maybe(LTCloseBr) || maybe(LTEof)) break;
+                if (isObject) 
+                    return parseObject();
+                else { // Parse as code block
+                    var exprs:Array<Expr> = [];
+                    while (true) {
+                        if (peekToken() == LTCloseCB || peekToken() == LTEof) break;
+                        parseBlock(exprs);
+                    }
+                    ensure(LTCloseCB); // Consume the closing brace
+                    return create(EBlock(exprs));
                 }
-                return create(EBlock(exprs));
             case LTOpenBr: 
                 var exprs:Array<Expr> = [];
                 while (true) {
@@ -204,6 +221,7 @@ class Parser {
                 var expr:Expr = parseExpr();
 
                 return create(EMeta(meta, args, expr));
+            case LTQuestion: return null; // (?var) in this case do nothing.
             default: 
                 unexpected(readTokenInPlace());
                 return null;
@@ -219,7 +237,7 @@ class Parser {
         switch (readToken()) {
             case LTOp(op):
                 #if HSCRIPT_VERBOSE_PARSER
-                trace('parseNextExpr LTOp: op=$op');
+                trace('parseNextExpr LTOp: op $op');
                 #end
                 var exprOp = LOp.LEXER_TO_EXPR_OP.get(op);
                 #if HSCRIPT_VERBOSE_PARSER
@@ -345,6 +363,8 @@ class Parser {
                     case LTIdentifier(identifier): identifier;
                     default: reverseToken(); null;
                 };
+
+                ensure(LTOpenP);
 
                 var args:Array<Argument> = parseFunctionArgs();
                 if(maybe(LTColon)) parseIdent(); // function ():Type
@@ -505,7 +525,7 @@ class Parser {
         return switch (right.expr) {
             case EBinop(op2, left2, right2):
                 var delta:Int = ExprBinop.OP_PRECEDENCE_LOOKUP[cast op] - ExprBinop.OP_PRECEDENCE_LOOKUP[cast op2];
-                if (delta < 0 || (delta == 0 || ExprBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION.indexOf(cast op) != -1))
+                if (delta < 0 || (delta == 0 || ExprBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION.indexOf(cast op) == -1))
                     create(EBinop(op2, parseBinop(op, left, left2), right2));
                 else 
                     create(EBinop(op, left, right));
@@ -566,11 +586,11 @@ class Parser {
     private function parseFunctionArgs(?args:Array<Argument>):Array<Argument> {
         args ??= [];
         if (maybe(LTCloseP)) return args;
-
+        
         while (true) {
 			var argument:Argument = {name: null};
 
-            argument.opt = maybe(LTQuestion);
+            if (maybe(LTQuestion)) argument.opt = true;
             argument.name = variableID(parseIdent());
 
             if (maybe(LTColon)) parseIdent(); // var:Type
@@ -626,16 +646,17 @@ class Parser {
 
     private function parseBlock(exprs:Array<Expr>) {
         var expr:Expr = parseExpr();
-        exprs.push(expr);
+        if (expr != null) exprs.push(expr);
 
-        if (isBlock(expr)) 
-            switch (peekToken()) {
-                case LTSemiColon | LTEof: readToken();
-                default: unexpected(peekToken());
-            }
+        var testToken:LToken = readToken();
+        if (testToken != LTSemiColon && testToken != LTEof)
+            if (isBlock(expr)) reverseToken();
+            else expected(testToken, LTSemiColon);
     }
 
     private function variableID(string:String):VariableType {
+        if (string == null) return -1;
+
         var varID:VariableType = variablesList.indexOf(string);
         if (varID == -1) {
             variablesList.push(string);
@@ -680,14 +701,14 @@ class Parser {
         } else return true;
     }
 
-    private function deepEnsure(expected:LToken) {
+    private function deepEnsure(expectedToken:LToken) {
         var testToken:LToken = readToken();
-        if (!Type.enumEq(expected, testToken)) unexpected(testToken);
+        if (!Type.enumEq(expectedToken, testToken)) expected(testToken, expectedToken);
     }
 
-    private function ensure(expected:LToken) {
+    private function ensure(expectedToken:LToken) {
         var testToken:LToken = readToken();
-        if (expected != testToken) unexpected(testToken);
+        if (expectedToken != testToken) expected(testToken, expectedToken);
     }
 
     private function readToken():LToken {
@@ -696,19 +717,24 @@ class Parser {
     }
 
     private function readTokenInPlace():LToken {
-        if (token >= tokens.length) return LTEof;
-        return tokens[token].token;
+        if (token - 1 < 0 ||  token - 1 >= tokens.length) return LTEof;
+        return tokens[token-1].token;
     }
 
     private function peekToken():LToken {
-        if (token + 1 >= tokens.length) return LTEof;
-        return tokens[token+1].token;
+        if (token >= tokens.length) return LTEof;
+        return tokens[token].token;
     }
 
     private function reverseToken() {
         if (token > 0) token--;
         else token = 0;
     }
+
+    private function expected(token:LToken, want:LToken) {
+		error(EUnexpected(Std.string(token), Std.string(want)), exprMin, exprMax);
+        return null;
+	}
 
     private function unexpected(token:LToken) {
 		error(EUnexpected(Std.string(token)), exprMin, exprMax);

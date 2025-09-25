@@ -14,11 +14,27 @@ class Error {
 		this.origin = origin;
 		this.line = line;
 	}
+
+	public function toString():String {
+		var message:String = switch( this.e ) {
+			case EInvalidChar(c): "Invalid character: '"+(StringTools.isEof(c) ? "EOF" : String.fromCharCode(c))+"' ("+c+")";
+			case EUnexpected(s , expected): (expected != null ? 'Unexpected token: have $s, want $expected' : "Unexpected token: \""+s+"\"");
+			case EUnterminatedString: "Unterminated string";
+			case EUnterminatedComment: "Unterminated comment";
+			case EInvalidPreprocessor(str): "Invalid preprocessor (" + str + ")";
+			case EUnknownVariable(v): "Unknown variable: "+v;
+			case EInvalidIterator(v): "Invalid iterator: "+v;
+			case EInvalidOp(op): "Invalid operator: "+op;
+			case EInvalidAccess(f): "Invalid access to field " + f;
+			case ECustom(msg): msg;
+		};
+		return (this.origin != null ? (this.origin + ":") : "") + this.line + ": " + message;
+	}
 }
 
 enum ErrorDef {
 	EInvalidChar( c : Int );
-	EUnexpected( s : String );
+	EUnexpected( s : String , ? expected : String );
 	EUnterminatedString;
 	EUnterminatedComment;
 	EInvalidPreprocessor( msg : String );

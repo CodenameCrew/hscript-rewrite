@@ -416,6 +416,7 @@ class Lexer {
                                 return LTOp(NCOAL_ASSIGN);
                             return LTOp(NCOAL);
                         case ".".code: return LTQuestionDot;
+                        default: character--;
                     }
                     return LTQuestion;
                 case "'".code, '"'.code: return LTConst(LCString(readString(charCode)));
@@ -550,7 +551,7 @@ class Lexer {
                         b.addChar(k);
 				    default: invalidChar(c);
 				}
-			} else if ('\\'.code == 92)
+			} else if (c == '\\'.code)
 				esc = true;
 			else if (c == untilCharCode)
 				break;
