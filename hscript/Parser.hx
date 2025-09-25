@@ -1,16 +1,17 @@
 package hscript;
 
-import hscript.Expr.EBinop;
-import hscript.Expr.EImportMode;
-import hscript.Expr.ObjectField;
-import hscript.Expr.EUnop as ExprUnop;
-import hscript.Expr.EBinop as ExprBinop;
+import hscript.Ast.Expr;
+import hscript.Ast.EBinop;
+import hscript.Ast.EImportMode;
+import hscript.Ast.ObjectField;
+import hscript.Ast.EUnop as ExprUnop;
+import hscript.Ast.EBinop as ExprBinop;
 import hscript.Lexer.LOp;
-import hscript.Expr.SwitchCase;
-import hscript.Expr.Argument;
-import hscript.Expr.VariableType;
+import hscript.Ast.SwitchCase;
+import hscript.Ast.Argument;
+import hscript.Ast.VariableType;
 import hscript.Lexer.LKeyword;
-import hscript.Expr.ExprDef;
+import hscript.Ast.ExprDef;
 import hscript.Lexer.LTokenPos;
 import hscript.Error.ErrorDef;
 import hscript.Lexer.LToken;

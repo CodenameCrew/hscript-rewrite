@@ -1,6 +1,6 @@
 package;
 
-import hscript.Expr;
+import hscript.Ast;
 import haxe.CallStack;
 import hscript.Parser;
 import hscript.Lexer;

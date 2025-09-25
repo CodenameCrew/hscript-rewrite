@@ -1,7 +1,7 @@
 package hscript;
 
-import hscript.Expr.EUnop;
-import hscript.Expr.EBinop;
+import hscript.Ast.EUnop;
+import hscript.Ast.EBinop;
 import hscript.Error.ErrorDef;
 import haxe.ds.StringMap;
 
