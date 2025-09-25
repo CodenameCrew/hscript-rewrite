@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Expr.EBinop;
 import hscript.Expr.EImportMode;
 import hscript.Expr.ObjectField;
 import hscript.Expr.EUnop as ExprUnop;
@@ -26,10 +27,6 @@ class Parser {
 
     public var origin:String = null;
     
-    #if HSCRIPT_VERBOSE_PARSER
-    private var recursionDepth:Int = 0;
-    private var maxRecursionDepth:Int = 0;
-    #end
 
     public function new(?origin:String) {
         this.origin = origin ?? "";
@@ -55,12 +52,6 @@ class Parser {
         
         this.tokens = tokens;
 
-        #if HSCRIPT_VERBOSE_PARSER
-        trace('Starting parse with ${tokens.length} tokens');
-        recursionDepth = 0;
-        maxRecursionDepth = 100;
-        #end
-
         var exprs:Array<Expr> = [];
         while (true) {
             if (peekToken() == LTEof) break;
@@ -70,16 +61,6 @@ class Parser {
     }
 
     private function parseExpr():Expr {
-        #if HSCRIPT_VERBOSE_PARSER
-        recursionDepth++;
-        if (recursionDepth > maxRecursionDepth) {
-            maxRecursionDepth = recursionDepth;
-            trace('MAX RECURSION DEPTH: $maxRecursionDepth at token $token/${tokens.length} ${readTokenInPlace()}');
-            error(ECustom("Stack overflow"));
-        }
-        trace('parseExpr() depth: $recursionDepth, token: $token/${tokens.length} ${readTokenInPlace()}');
-        #end
-        
         switch (readToken()) {
             case LTOpenP: 
                 if (maybe(LTCloseP)) { // empty args lambda 
@@ -229,24 +210,10 @@ class Parser {
     }
 
     private function parseNextExpr(prev:Expr):Expr {
-        #if HSCRIPT_VERBOSE_PARSER
-        recursionDepth++;
-        trace('parseNextExpr() called at token: $token, prev: ${prev.expr}');
-        #end
-
         switch (readToken()) {
             case LTOp(op):
-                #if HSCRIPT_VERBOSE_PARSER
-                trace('parseNextExpr LTOp: op $op');
-                #end
-                var exprOp = LOp.LEXER_TO_EXPR_OP.get(op);
-                #if HSCRIPT_VERBOSE_PARSER
-                trace('Mapped exprOp: $exprOp');
-                #end
-                var precedence = ExprBinop.OP_PRECEDENCE_LOOKUP[cast exprOp];
-                #if HSCRIPT_VERBOSE_PARSER
-                trace('Precedence: $precedence');
-                #end
+                var exprOp:EBinop = LOp.LEXER_TO_EXPR_OP.get(op);
+                var precedence:Int = ExprBinop.OP_PRECEDENCE_LOOKUP[cast exprOp];
 
                 if (op == FUNCTION_ARROW) { // Single arg reinterpretation of `f -> e` , `(f) -> e`
                     switch (prev.expr) {
@@ -260,13 +227,7 @@ class Parser {
                 }
 
                 if (precedence == -1) {
-                    #if HSCRIPT_VERBOSE_PARSER
-                    trace('Precedence is -1, trying unary path');
-                    #end
                     var unop = LOp.LEXER_TO_EXPR_UNOP.get(op);
-                    #if HSCRIPT_VERBOSE_PARSER
-                    trace('Unary op: $unop');
-                    #end
                     if (isBlock(prev) || prev.expr.match(EParent(_))) {
                         reverseToken();
                         return prev;
@@ -298,11 +259,7 @@ class Parser {
 
     @:haxe.warning("-WUnusedPattern") // get rid of (WUnusedPattern) This case is unused on INLINE case
     private function parseKeyword(keyword:LKeyword) {
-        #if HSCRIPT_VERBOSE_PARSER
-        trace('parseKeyword($keyword) at token: $token');
-        var startToken = token;
-        #end
-        #if HSCRIPT_VERBOSE_PARSER var res = #else return #end switch (keyword) {
+        return switch (keyword) {
             case VAR | FINAL: 
                 var variableName:String = parseIdent();
                 if (maybe(LTColon)) parseIdent(); // var:Type
@@ -518,11 +475,6 @@ class Parser {
                 create(EImport(identifiers.join("."), mode));
             default: null;
         }
-
-        #if HSCRIPT_VERBOSE_PARSER
-        trace('parseKeyword($keyword) finished at token: $token (advanced ${token - startToken} tokens)');
-        return res;
-        #end
     }
 
     private function parseIdent():String {
@@ -582,10 +534,6 @@ class Parser {
      * Results in: +(2, *(3,4))
      */
     private function parseBinop(op:ExprBinop, left:Expr, right:Expr) {
-        #if HSCRIPT_VERBOSE_PARSER
-        trace('parseBinop() depth: $recursionDepth, op: $op, token: $token/${tokens.length}');
-        trace('leftExpr: $left, rightExpr: $right');
-        #end
         if (right == null) return create(EBinop(op, left, right));
         return switch (right.expr) {
             case EBinop(op2, left2, right2):
@@ -610,9 +558,6 @@ class Parser {
      * Also: !a ? b : c; parser sees !(a ? b : c), ensure it is correct (!a) ? b : c.
      */
     private function parseUnop(unop:ExprUnop, expr:Expr):Expr {
-        #if HSCRIPT_VERBOSE_PARSER
-        trace('parseUnop() depth: $recursionDepth, unop: $unop, token: $token/${tokens.length}');
-        #end
         if (expr == null) return null;
 
         return switch (expr.expr) {

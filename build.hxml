@@ -6,6 +6,3 @@
 --define HXCPP_DEBUG_LINK
 
 --define analyzer-optimize
-
-# -D HSCRIPT_VERBOSE_PARSER
-# -D HSCRIPT_VERBOSE_LEXER
