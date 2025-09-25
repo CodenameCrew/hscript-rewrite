@@ -14,10 +14,6 @@ import hscript.Error.ErrorDef;
 import hscript.Lexer.LToken;
 
 class Parser {
-    private var exprMin:Int = 0;
-    private var exprMax:Int = 0;
-    private var line:Int = 0;
-
     private var tokens:Array<LTokenPos> = [];
     private var token:Int = 0;
 
@@ -75,7 +71,7 @@ class Parser {
         if (recursionDepth > maxRecursionDepth) {
             maxRecursionDepth = recursionDepth;
             trace('MAX RECURSION DEPTH: $maxRecursionDepth at token $token/${tokens.length} ${readTokenInPlace()}');
-            error(ECustom("Stack overflow"), exprMin, exprMax);
+            error(ECustom("Stack overflow"));
         }
         trace('parseExpr() depth: $recursionDepth, token: $token/${tokens.length} ${readTokenInPlace()}');
         #end
@@ -141,13 +137,13 @@ class Parser {
                     default:
                 }
 
-                return unexpected(readTokenInPlace());
+                return unexpected();
             case LTOpenCB: 
                 var nextToken:LToken = readTokenInPlace();
                 var isObject:Bool = false;
 
                 if (nextToken == LTCloseCB) { // Empty object {}
-                    readToken(); // Consume LTCloseCB
+                    readToken();
                     return parseNextExpr(create(EObject(null)));
                 } else if (nextToken.match(LTIdentifier(_))) { // {var:
                     var peekToken:LToken = peekToken();
@@ -165,7 +161,7 @@ class Parser {
                         if (peekToken() == LTCloseCB || peekToken() == LTEof) break;
                         parseBlock(exprs);
                     }
-                    ensure(LTCloseCB); // Consume the closing brace
+                    ensure(LTCloseCB);
                     return create(EBlock(exprs));
                 }
             case LTOpenBr: 
@@ -177,7 +173,7 @@ class Parser {
                         case LTComma:
                         case LTCloseBr: break;
                         default:
-                            unexpected(readTokenInPlace());
+                            unexpected();
                             break;
                     }
                 }
@@ -212,7 +208,7 @@ class Parser {
 
                 if (ExprBinop.OP_PRECEDENCE_LOOKUP[cast unop] < 0) return parseUnop(unop, parseExpr());
 
-                return unexpected(readTokenInPlace());
+                return unexpected();
             case LTKeyWord(keyword): return parseNextExpr(parseKeyword(keyword));
             case LTIdentifier(identifier): return parseNextExpr(create(EIdent(variableID(identifier))));
             case LTConst(const): return parseNextExpr(create(EConst(const)));
@@ -223,7 +219,7 @@ class Parser {
                 return create(EMeta(meta, args, expr));
             case LTQuestion: return null; // (?var) in this case do nothing.
             default: 
-                unexpected(readTokenInPlace());
+                unexpected();
                 return null;
         }
     }
@@ -256,7 +252,7 @@ class Parser {
                         default:
                     }
 
-                    unexpected(readTokenInPlace());
+                    unexpected();
                 }
 
                 if (precedence == -1) {
@@ -300,9 +296,9 @@ class Parser {
     private function parseKeyword(keyword:LKeyword) {
         #if HSCRIPT_VERBOSE_PARSER
         trace('parseKeyword($keyword) at token: $token');
-        #end
         var startToken = token;
-        var res = switch (keyword) {
+        #end
+        #if HSCRIPT_VERBOSE_PARSER var res = #else return #end switch (keyword) {
             case VAR | INLINE | FINAL: 
                 var variableName:String = parseIdent();
                 if (maybe(LTColon)) parseIdent(); // var:Type
@@ -354,7 +350,7 @@ class Parser {
                     create(EFor(variableID(key), iterator, expr));
             case BREAK: create(EBreak);
             case CONTINUE: create(EContinue);
-            case ELSE: unexpected(LTKeyWord(keyword)); // Handled in "if" keyword parsing
+            case ELSE: unexpected(); // Handled in "if" keyword parsing
             case INLINE:
                 deepEnsure(LTKeyWord(FUNCTION));
                 parseKeyword(FUNCTION);
@@ -427,13 +423,13 @@ class Parser {
 
                                 switch (readToken()) {
                                     case LTComma: // Condition1 , Condition2 
-                                    case LTColon: // case Condition:
-                                    default: unexpected(readTokenInPlace()); break;
+                                    case LTColon: break; // case Condition:
+                                    default: unexpected(); break;
                                 }
                             }
                             switchCase.expr = getSwitchExprs();
                         case LTKeyWord(DEFAULT):
-                            if (expr != null) unexpected(readTokenInPlace());
+                            if (expr != null) unexpected();
                             ensure(LTColon);
                             
                             var exprs:Array<Expr> = [];
@@ -446,25 +442,35 @@ class Parser {
                             }
                             defaultExpr = getSwitchExprs();
                         case LTCloseCB: break;
-                        default: unexpected(readTokenInPlace());
+                        default: unexpected();
                     }
                 }
 
-                create(ESwitch(expr, cases, defaultExpr));
+                var filteredCases:Array<SwitchCase> = [];
+                for (switchCase in cases) {
+                    if (switchCase.values.length <= 0) continue;
+                    switch (switchCase.expr.expr) {
+                        case EBlock([]): continue;
+                        default:
+                    }
+                    filteredCases.push(switchCase);
+                }
+
+                create(ESwitch(expr, filteredCases, defaultExpr));
             default: null;
         }
 
         #if HSCRIPT_VERBOSE_PARSER
         trace('parseKeyword($keyword) finished at token: $token (advanced ${token - startToken} tokens)');
-        #end
         return res;
+        #end
     }
 
     private function parseIdent():String {
         var token:LToken = readToken();
         switch (token) {
             case LTIdentifier(identifier): return identifier;
-            default: unexpected(token); return null;
+            default: unexpected(); return null;
         }
     }
 
@@ -476,7 +482,7 @@ class Parser {
             switch (readToken()) {
                 case LTDot: identifiers.push(parseIdent());
                 case LTOpenP: break;
-                default: unexpected(readTokenInPlace()); break;
+                default: unexpected(); break;
             }
         }
 
@@ -492,7 +498,7 @@ class Parser {
 			switch (readToken()) {
 				case LTComma:
                 case LTCloseP: break;
-				default: unexpected(readTokenInPlace()); break;
+				default: unexpected(); break;
 			}
 		}
 
@@ -603,7 +609,7 @@ class Parser {
             switch (readToken()) {
                 case LTComma: 
                 case LTCloseP: break;
-				default: unexpected(readTokenInPlace()); break;
+				default: unexpected(); break;
             }
 		}
 
@@ -620,11 +626,11 @@ class Parser {
                 case LTConst(const):
                     switch (const) {
                         case LCString(string): fieldName = string;
-                        default: unexpected(readTokenInPlace());
+                        default: unexpected();
                     }
                 case LTCloseBr: break;
                 default:
-                    unexpected(readTokenInPlace());
+                    unexpected();
                     break;
             }
             ensure(LTColon);
@@ -636,7 +642,7 @@ class Parser {
                 case LTCloseBr: break;
                 case LTComma:
                 default: 
-                    unexpected(readTokenInPlace());
+                    unexpected();
                     break;
             }
         }
@@ -651,7 +657,7 @@ class Parser {
         var testToken:LToken = readToken();
         if (testToken != LTSemiColon && testToken != LTEof)
             if (isBlock(expr)) reverseToken();
-            else expected(testToken, LTSemiColon);
+            else expected(LTSemiColon);
     }
 
     private function variableID(string:String):VariableType {
@@ -664,12 +670,10 @@ class Parser {
         } else return varID;
     }
 
-    private function create(expr:ExprDef) {
+    private function create(expr:ExprDef):Expr {
         return {
             expr: expr,
-            min: exprMin,
-            max: exprMax,
-            line: line
+            line: readLine()
         };
     }
 
@@ -703,12 +707,12 @@ class Parser {
 
     private function deepEnsure(expectedToken:LToken) {
         var testToken:LToken = readToken();
-        if (!Type.enumEq(expectedToken, testToken)) expected(testToken, expectedToken);
+        if (!Type.enumEq(expectedToken, testToken)) expected(expectedToken);
     }
 
     private function ensure(expectedToken:LToken) {
         var testToken:LToken = readToken();
-        if (expectedToken != testToken) expected(testToken, expectedToken);
+        if (expectedToken != testToken) expected(expectedToken);
     }
 
     private function readToken():LToken {
@@ -731,17 +735,29 @@ class Parser {
         else token = 0;
     }
 
-    private function expected(token:LToken, want:LToken) {
-		error(EUnexpected(Std.string(token), Std.string(want)), exprMin, exprMax);
+    private function readPosition():LTokenPos {
+        if (token - 1 < 0 ||  token - 1 >= tokens.length) return {token: LTEof, min: 0, max: 0, line: 0};
+        return tokens[token-1];
+    }
+
+    private function readLine():Int {
+        if (token - 1 < 0 ||  token - 1 >= tokens.length) return 0;
+        return tokens[token-1].line;
+    }
+
+    private function expected(want:LToken) {
+        var currentToken:LTokenPos = readPosition();
+		error(EUnexpected(Std.string(currentToken.token), Std.string(want)), currentToken.min, currentToken.max, currentToken.line);
         return null;
 	}
 
-    private function unexpected(token:LToken) {
-		error(EUnexpected(Std.string(token)), exprMin, exprMax);
+    private function unexpected() {
+        var currentToken:LTokenPos = readPosition();
+		error(EUnexpected(Std.string(currentToken.token)), currentToken.min, currentToken.max, currentToken.line);
         return null;
 	}
 
-    private function error(err:ErrorDef, pmin:Int, pmax:Int) {
+    private function error(err:ErrorDef, pmin:Int, pmax:Int, line:Int) {
 		throw new Error(err, pmin, pmax, origin, line);
 	}
 }

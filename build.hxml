@@ -7,5 +7,5 @@
 
 --define analyzer-optimize
 
- -D HSCRIPT_VERBOSE_PARSER
+# -D HSCRIPT_VERBOSE_PARSER
 # -D HSCRIPT_VERBOSE_LEXER

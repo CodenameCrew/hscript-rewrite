@@ -635,7 +635,7 @@ class Lexer {
         #if HSCRIPT_VERBOSE_LEXER
         trace('Lexer output (length: ${output.length}):');
         for (i in 0...output.length) {
-            trace(i + " => " + Std.string(output[i].token));
+            trace(i + " => " + Std.string(output[i].token), output[i].min, output[i].max);
         }
         #end
 

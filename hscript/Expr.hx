@@ -14,8 +14,6 @@ typedef UInt8 = UInt; // fallback for JS, Python, etc.
 
 typedef Expr = {
 	var expr:ExprDef;
-	var min:Int;
-	var max:Int;
 	var line:Int;
 }
 
