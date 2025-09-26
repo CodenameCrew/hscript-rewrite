@@ -67,8 +67,8 @@ class Parser {
 
     private function parseExpr():Expr {
         switch (readToken()) {
-            case LTPrepro(prepro): return parsePreprocess(prepro);
-            case LTOpenP: 
+            case LTPrepro(prepro): return parseNextExpr(parsePreprocess(prepro)); // #if 
+            case LTOpenP:
                 if (maybe(LTCloseP)) { // empty args lambda () -> {}
                     deepEnsure(LTOp(FUNCTION_ARROW));
                     var expr:Expr = parseExpr();
@@ -91,7 +91,7 @@ class Parser {
                 switch (readToken()) {
                     case LTCloseP: return parseNextExpr(create(EParent(expr)));
                     case LTColon:
-                        parseIdent(); // :Type
+                        parseType(); // :Type
 
                         switch (readToken()) {
                             case LTCloseP:
@@ -116,7 +116,7 @@ class Parser {
                         }
                     case LTIdentifier(identifier):
                         if (expr == null) {
-                            if (maybe(LTColon)) parseIdent(); // (?arg:Int)
+                            if (maybe(LTColon)) parseType(); // (?arg:Int)
                             return parseLambda([{name: variableID(identifier), opt: true}]);
                         }
 
@@ -268,7 +268,7 @@ class Parser {
         return switch (keyword) {
             case VAR | FINAL: 
                 var variableName:String = parseIdent();
-                if (maybe(LTColon)) parseIdent(); // var:Type
+                if (maybe(LTColon)) parseType(); // var:Type
 
                 var assign:Expr = null; // var = ;
                 if (maybe(LTOp(ASSIGN))) assign = parseExpr();
@@ -331,7 +331,7 @@ class Parser {
                 ensure(LTOpenP);
 
                 var args:Array<Argument> = parseFunctionArgs();
-                if(maybe(LTColon)) parseIdent(); // function ():Type
+                if(maybe(LTColon)) parseType(); // function ():Type
 
                 var expr:Expr = parseExpr();
                 create(EFunction(args, expr, variableID(functionName), publicModifier, staticModifier));
@@ -351,7 +351,7 @@ class Parser {
                     ensure(LTOpenP);
 
                     varName = parseIdent();
-                    if(maybe(LTColon)) parseIdent(); // e:Error
+                    if(maybe(LTColon)) parseType(); // e:Error
 
                     ensure(LTCloseP);
                     catchExpr = parseExpr();
@@ -493,6 +493,12 @@ class Parser {
         }
     }
 
+    private function parseType():String {
+        var identifier:String = parseIdent();
+        if (maybe(LTOp(LT))) parseClassArgs();
+        return identifier;
+    }
+
     private function parseClassName():String { // haxe.Unserializer
         var identifiers:Array<String> = [];
         identifiers.push(parseIdent());
@@ -500,12 +506,24 @@ class Parser {
         while (true) {
             switch (readToken()) {
                 case LTDot: identifiers.push(parseIdent());
+                case LTOp(LT): parseClassArgs(); // Class args
                 case LTOpenP: break;
                 default: unexpected(); break;
             }
         }
 
         return identifiers.join(".");
+    }
+
+    private inline function parseClassArgs() {
+        while (true) { // Class<Arg1, Arg2>
+            switch (readToken()) {
+                case LTIdentifier(_) | LTComma: // do nothing
+                case LTOp(GT): break; // >
+                case LTEof: expected(LTOp(GT));
+                default: unexpected();
+            }
+        }
     }
 
     private function parseParentheses():Array<Expr> {
