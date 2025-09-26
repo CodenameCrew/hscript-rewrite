@@ -9,7 +9,7 @@ class Main {
     public static function main() {
         try {
             var parser = new Parser();
-            var expr = parser.parseString("var map = [1 => 3, 2 => 3];");
+            var expr = parser.parseString("var map = [for (i in 0...8) i => i];");
             trace(expr);
         } catch (e:Dynamic) {
             trace(e, CallStack.toString(CallStack.exceptionStack()));

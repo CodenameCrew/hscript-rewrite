@@ -161,6 +161,7 @@ class Parser {
 
                 var mapDeclaration:Bool = false;
                 var values:Array<Expr> = [];
+
                 switch (testExpr.expr) {
                     case EBinop(ARROW, left, right): 
                         mapDeclaration = true;
@@ -175,7 +176,7 @@ class Parser {
                     case LTComma:
                         while (true) {
                             if (maybe(LTCloseBr)) break;
-                            
+
                             var expr:Expr = parseExpr();
                             switch (expr.expr) {
                                 case EBinop(ARROW, left, right) if (mapDeclaration):
@@ -200,7 +201,7 @@ class Parser {
                     switch (firstExpr.expr) {
                         case EFor(_), EForKeyValue(_), EWhile(_), EDoWhile(_):
                             var temporaryVariable:Int = variableID("__a_" + (uniqueID++));
-                            var exprBlock:Expr = if (mapDeclaration) {
+                            var exprBlock:Expr = if (isMapComprehension(firstExpr)) {
                                 create(EBlock([
                                     create(EVar(temporaryVariable, create(EMapDecl([], [])))),
                                     parseMapComprehensions(temporaryVariable, firstExpr),
@@ -724,6 +725,23 @@ class Parser {
             case EBlock([expr]): create(EBlock([parseArrayComprehensions(temp, expr)]));
             case EParent(expr): create(EParent(parseArrayComprehensions(temp, expr)));
             default: create(ECall(create(EField(create(EIdent(temp)), "push")), [expr]));
+        }
+    }
+
+    private function isMapComprehension(expr:Expr):Bool {
+        if (expr == null) return false;
+
+        return switch (expr.expr) {
+            case EFor(varName, iterator, body): isMapComprehension(body);
+            case EForKeyValue(key, value, iterator, body): isMapComprehension(body);
+            case EWhile(cond, body): isMapComprehension(body);
+            case EDoWhile(cond, body): isMapComprehension(body);
+            case EIf(cond, thenExpr, elseExpr) if (elseExpr == null): isMapComprehension(thenExpr);
+            case EIf(cond, thenExpr, elseExpr) if (elseExpr != null): isMapComprehension(thenExpr) && isMapComprehension(elseExpr);
+            case EBlock([expr]): isMapComprehension(expr);
+            case EParent(expr): isMapComprehension(expr);
+            case EBinop(ARROW, left, right): true;
+            default: false;
         }
     }
 
