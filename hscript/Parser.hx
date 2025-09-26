@@ -157,16 +157,42 @@ class Parser {
                 if (maybe(LTCloseBr)) // empty array []
                     return parseNextExpr(create(EArrayDecl([])));
 
-                while (true) {
-                    var expr:Expr = parseExpr();
-                    exprs.push(expr);
-                    switch (readToken()) {
-                        case LTComma:
-                        case LTCloseBr: break;
-                        default:
-                            unexpected();
-                            break;
-                    }
+                var testExpr:Expr = parseExpr(); // query if the [ is a map with =>
+
+                var mapDeclaration:Bool = false;
+                var values:Array<Expr> = [];
+                switch (testExpr.expr) {
+                    case EBinop(ARROW, left, right): 
+                        mapDeclaration = true;
+                        exprs.push(left);
+                        values.push(right);
+                    default: 
+                        exprs.push(testExpr); 
+                }
+
+                switch (readToken()) {
+                    case LTCloseBr:
+                    case LTComma:
+                        while (true) {
+                            if (maybe(LTCloseBr)) break;
+                            
+                            var expr:Expr = parseExpr();
+                            switch (expr.expr) {
+                                case EBinop(ARROW, left, right) if (mapDeclaration):
+                                    exprs.push(left);
+                                    values.push(right);
+                                default:
+                                    if (mapDeclaration) expected(LTOp(ARROW));
+                                    else exprs.push(expr);
+                            }
+
+                            switch (readToken()) {
+                                case LTComma:
+                                case LTCloseBr: break;
+                                default: unexpected(); break;
+                            }
+                        }
+                    default: unexpected();
                 }
 
                 if (exprs.length == 1 && exprs[0] != null) {
@@ -174,16 +200,24 @@ class Parser {
                     switch (firstExpr.expr) {
                         case EFor(_), EForKeyValue(_), EWhile(_), EDoWhile(_):
                             var temporaryVariable:Int = variableID("__a_" + (uniqueID++));
-                            var exprBlock:Expr = create(EBlock([
-                                create(EVar(temporaryVariable, create(EArrayDecl([])))),
-                                parseArrayComprehensions(temporaryVariable, firstExpr),
-                                create(EIdent(temporaryVariable))
-                            ]));
+                            var exprBlock:Expr = if (mapDeclaration) {
+                                create(EBlock([
+                                    create(EVar(temporaryVariable, create(EMapDecl([], [])))),
+                                    parseMapComprehensions(temporaryVariable, firstExpr),
+                                    create(EIdent(temporaryVariable))
+                                ]));
+                            } else {
+                                create(EBlock([
+                                    create(EVar(temporaryVariable, create(EArrayDecl([])))),
+                                    parseArrayComprehensions(temporaryVariable, firstExpr),
+                                    create(EIdent(temporaryVariable))
+                                ]));
+                            }
                             return parseNextExpr(exprBlock);
                         default:
                     }
                 }
-                return parseNextExpr(create(EArrayDecl(exprs)));
+                return parseNextExpr(mapDeclaration ? create(EMapDecl(exprs, values)) : create(EArrayDecl(exprs)));
             case LTOp(op):
                 if (LexerOp.ALL_LUNOPS.indexOf(op) != -1) { // Parse unops (!, -, ~, ++, --)
                     var unop:ExprUnop = LexerOp.LEXER_TO_EXPR_UNOP.get(op);
@@ -690,6 +724,39 @@ class Parser {
             case EBlock([expr]): create(EBlock([parseArrayComprehensions(temp, expr)]));
             case EParent(expr): create(EParent(parseArrayComprehensions(temp, expr)));
             default: create(ECall(create(EField(create(EIdent(temp)), "push")), [expr]));
+        }
+    }
+
+    /**
+     * Turns a expression (in this case map declaration) into a series of sets into temp map.
+     * 
+     * For example: var map:Map<String, Int> = [for (i in 0...8) Std.string(i) => i];
+     * 
+     * Gets turned into:
+     * var __a_0 = [];
+     * for (i in 0...8)
+     *     __a_0.set(Std.string(i), i);
+     * __a_0;
+     */
+    private function parseMapComprehensions(temp:VariableType, expr:Expr):Expr {
+        if (expr == null) return null;
+        
+        return switch (expr.expr) {
+            case EFor(varName, iterator, body): create(EFor(varName, iterator, parseMapComprehensions(temp, body)));
+            case EForKeyValue(key, value, iterator, body): create(EForKeyValue(key, value, iterator, parseMapComprehensions(temp, body)));
+            case EWhile(cond, body): create(EWhile(cond, parseMapComprehensions(temp, body)));
+            case EDoWhile(cond, body): create(EDoWhile(cond, parseMapComprehensions(temp, body)));
+            case EIf(cond, thenExpr, elseExpr): create(EIf(cond, parseMapComprehensions(temp, thenExpr), parseMapComprehensions(temp, elseExpr)));
+            case EBlock([expr]): create(EBlock([parseMapComprehensions(temp, expr)]));
+            case EParent(expr): create(EParent(parseMapComprehensions(temp, expr)));
+            default: 
+                switch (expr.expr) {
+                    case EBinop(ARROW, left, right):
+                        create(ECall(create(EField(create(EIdent(temp)), "set")), [left, right]));
+                    default:
+                        create(ECall(create(EField(create(EIdent(temp)), "set")), [expr, create(EIdent(variableID("null")))]));
+                }
+                
         }
     }
 
