@@ -620,8 +620,8 @@ class Lexer {
 		return StringTools.fastCodeAt(input, character++);
 	}
 
-    private inline function invalidChar(c) {
-        error(EInvalidChar(c), character-1, character-1);
+    private inline function invalidChar(characterCode:Int) {
+        error(EInvalidChar(characterCode), character - 1, character - 1);
     }
 
     private inline function error(err:ErrorDef, pmin:Int, pmax:Int) {

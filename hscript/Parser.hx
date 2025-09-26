@@ -581,7 +581,7 @@ class Parser {
         switch (id) {
             case "if":
                 var exprs:Array<Expr> = [];
-                parsePreprocessBlock(exprs, parsePreprocessCond(false));
+                parsePreprocessBlock(exprs, parsePreprocessCond());
                 return create(EBlock(exprs));
             case "else" | "elseif" | "end": error(EInvalidPreprocessor("Invalid #" + id));
             default: error(EInvalidPreprocessor("Unknown preprocessor #" + id));
@@ -621,7 +621,7 @@ class Parser {
      * we should not keep this since it is not used at runtime,
      * so we resize the array to remove excess.
      */
-    private function parsePreprocessCond(nullify:Bool):Bool {
+    private function parsePreprocessCond(nullify:Bool = false):Bool {
         var oldVariablesListSize:Int = variablesList.length;
 
         var condition:Expr = parseExpr();
