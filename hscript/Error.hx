@@ -7,7 +7,7 @@ class Error {
 	public var origin:String;
 	public var line:Int;
 
-	public function new(e:ErrorDef, min:Int, max:Int, origin:String, line:Int) {
+	public function new(e:ErrorDef, ?min:Int, ?max:Int, ?origin:String, ?line:Int) {
 		this.e = e;
 		this.min = min;
 		this.max = max;

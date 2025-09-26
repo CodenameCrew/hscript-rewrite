@@ -1,12 +1,13 @@
 package hscript;
 
+import hscript.Interp.StaticInterp;
+import haxe.ds.StringMap;
 import hscript.Ast.Expr;
-import hscript.Ast.EBinop;
 import hscript.Ast.EImportMode;
 import hscript.Ast.ObjectField;
-import hscript.Ast.EUnop as ExprUnop;
-import hscript.Ast.EBinop as ExprBinop;
-import hscript.Lexer.LOp as LexerOp;
+import hscript.Ast.ExprUnop;
+import hscript.Ast.ExprBinop;
+import hscript.Lexer.LexerOp;
 import hscript.Ast.SwitchCase;
 import hscript.Ast.Argument;
 import hscript.Ast.VariableType;
@@ -27,9 +28,13 @@ class Parser {
     private var staticModifier:Bool = false;
 
     public var origin:String = null;
+    public var preprocesorValues:StringMap<Dynamic> = new StringMap<Dynamic>();
     
     public function new(?origin:String) {
         this.origin = origin ?? "";
+
+        preprocesorValues.set("true", true);
+        preprocesorValues.set("false", false);
     }
 
     /**
@@ -62,8 +67,9 @@ class Parser {
 
     private function parseExpr():Expr {
         switch (readToken()) {
+            case LTPrepro(prepro): return parsePreprocess(prepro);
             case LTOpenP: 
-                if (maybe(LTCloseP)) { // empty args lambda 
+                if (maybe(LTCloseP)) { // empty args lambda () -> {}
                     deepEnsure(LTOp(FUNCTION_ARROW));
                     var expr:Expr = parseExpr();
                     return create(EFunction(null, expr));
@@ -518,6 +524,80 @@ class Parser {
         return args;
     }
 
+    private function parsePreprocess(id:String):Expr {
+        switch (id) {
+            case "if":
+                var exprs:Array<Expr> = [];
+                parsePreprocessBlock(exprs, parsePreprocessCond(false));
+                return create(EBlock(exprs));
+            case "else" | "elseif" | "end": error(EInvalidPreprocessor("Invalid #" + id));
+            default: error(EInvalidPreprocessor("Unknown preprocessor #" + id));
+        }
+        return null;
+    }
+
+    private function parsePreprocessBlock(exprs:Array<Expr>, active:Bool) {
+        var oldVariablesListSize:Int = variablesList.length; // same as parsePreprocessCond
+        while (true) {
+            switch (readToken()) {
+                case LTPrepro("else"): parsePreprocessBlock(exprs, !active); break;
+                case LTPrepro("elseif"): parsePreprocessBlock(exprs, parsePreprocessCond(active)); break;
+                case LTPrepro("end"): break;
+                case LTEof: error(EInvalidPreprocessor("Unclosed preprocessor")); break;
+                default: 
+                    reverseToken(); // reverse test token
+                    parseBlock(active ? exprs : null);
+            }
+        }
+        if (!active) variablesList.resize(oldVariablesListSize);
+    }
+
+    /**
+     * Get rid of staticly evaluated varaibles after they have been analyzed.
+     * 
+     * For example:
+     * 
+     * variablesList: []
+     * oldVariablesListSize: 0
+     * 
+     * #if DUSTIN_BUILD
+     * 
+     * variablesList: [DUSTIN_BUILD]
+     * variablesListSize: 1
+     * 
+     * we should not keep this since it is not used at runtime,
+     * so we resize the array to remove excess.
+     */
+    private function parsePreprocessCond(nullify:Bool):Bool {
+        var oldVariablesListSize:Int = variablesList.length;
+
+        var condition:Expr = parseExpr();
+        var evaluation:Bool = !nullify && evalPreprocessCond(condition);
+
+        variablesList.resize(oldVariablesListSize);
+
+        return evaluation;
+    }
+
+    /**
+     * Staticly evaluate a preprocess condition using values from preprocesorValues.
+     * 
+     * For example: 
+     * 
+     * #if cpp
+     * #if (cpp && HXCPP_DEBUG_LINK)
+     * #if (haxe_ver >= 4)
+     */
+    private function evalPreprocessCond(expr:Expr):Dynamic {
+        return switch (expr.expr) {
+            case EIdent(name): preprocesorValues.get(variablesList[name]);
+            case EConst(const): StaticInterp.evaluateConst(const);
+            case EParent(expr): evalPreprocessCond(expr);
+            case EBinop(op, left, right): StaticInterp.evaluateBinop(op, evalPreprocessCond(left), evalPreprocessCond(right));
+            default: false;
+        }
+    }
+
     /**
      * Make sure the higher the precedence the deeper the expression in the AST.
      * 
@@ -657,7 +737,7 @@ class Parser {
 
     private function parseBlock(exprs:Array<Expr>) {
         var expr:Expr = parseExpr();
-        if (expr != null) exprs.push(expr);
+        if (exprs != null && expr != null) exprs.push(expr);
 
         var testToken:LToken = readToken();
         if (testToken != LTSemiColon && testToken != LTEof)
@@ -751,18 +831,17 @@ class Parser {
     }
 
     private function expected(want:LToken) {
-        var currentToken:LTokenPos = readPosition();
-		error(EUnexpected(Std.string(currentToken.token), Std.string(want)), currentToken.min, currentToken.max, currentToken.line);
+		error(EUnexpected(Std.string(readTokenInPlace()), Std.string(want)));
         return null;
 	}
 
     private function unexpected():Null<Dynamic> {
-        var currentToken:LTokenPos = readPosition();
-		error(EUnexpected(Std.string(currentToken.token)), currentToken.min, currentToken.max, currentToken.line);
+		error(EUnexpected(Std.string(readTokenInPlace())));
         return null;
 	}
 
-    private function error(err:ErrorDef, pmin:Int, pmax:Int, line:Int) {
-		throw new Error(err, pmin, pmax, origin, line);
+    private function error(err:ErrorDef) {
+        var currentToken:LTokenPos = readPosition();
+		throw new Error(err, currentToken.min, currentToken.max, origin, currentToken.line);
 	}
 }

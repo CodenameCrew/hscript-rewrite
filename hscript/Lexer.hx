@@ -1,7 +1,7 @@
 package hscript;
 
-import hscript.Ast.EUnop;
-import hscript.Ast.EBinop;
+import hscript.Ast.ExprUnop;
+import hscript.Ast.ExprBinop;
 import hscript.Error.ErrorDef;
 import haxe.ds.StringMap;
 
@@ -26,7 +26,7 @@ enum LToken {
     LTQuestion; // ?
     LTQuestionDot; // ?.
 
-    LTOp(op:LOp);
+    LTOp(op:LexerOp);
     LTKeyWord(keyword:LKeyword);
     LTIdentifier(identifier:String);
     LTConst(const:LConst);
@@ -37,59 +37,59 @@ enum LToken {
     LTEof; // Use StringTools.isEof();
 }
 
-enum abstract LOp(String) from String to String {
-    var ADD:LOp = "+";
-    var SUB:LOp = "-";
-    var MULT:LOp = "*";
-    var DIV:LOp = "/";
-    var MOD:LOp = "%";
-    var AND:LOp = "&";
-    var OR:LOp = "|";
-    var XOR:LOp = "^";
-    var SHL:LOp = "<<";
-    var SHR:LOp = ">>";
-    var USHR:LOp = ">>>";
-    var EQ:LOp = "==";
-    var NEQ:LOp = "!=";
-    var GTE:LOp = ">=";
-    var LTE:LOp = "<=";
-    var GT:LOp = ">";
-    var LT:LOp = "<";
-    var BOR:LOp = "||";
-    var BAND:LOp = "&&";
-    var IS:LOp = "is";
-    var NCOAL:LOp = "??";
+enum abstract LexerOp(String) from String to String {
+    var ADD:LexerOp = "+";
+    var SUB:LexerOp = "-";
+    var MULT:LexerOp = "*";
+    var DIV:LexerOp = "/";
+    var MOD:LexerOp = "%";
+    var AND:LexerOp = "&";
+    var OR:LexerOp = "|";
+    var XOR:LexerOp = "^";
+    var SHL:LexerOp = "<<";
+    var SHR:LexerOp = ">>";
+    var USHR:LexerOp = ">>>";
+    var EQ:LexerOp = "==";
+    var NEQ:LexerOp = "!=";
+    var GTE:LexerOp = ">=";
+    var LTE:LexerOp = "<=";
+    var GT:LexerOp = ">";
+    var LT:LexerOp = "<";
+    var BOR:LexerOp = "||";
+    var BAND:LexerOp = "&&";
+    var IS:LexerOp = "is";
+    var NCOAL:LexerOp = "??";
 
-    var INTERVAL:LOp = "...";
-    var ARROW:LOp = "=>";
+    var INTERVAL:LexerOp = "...";
+    var ARROW:LexerOp = "=>";
 
     // Not in normal haxe as operators
-    var FUNCTION_ARROW:LOp = "->";
-    var ASSIGN:LOp = "=";
+    var FUNCTION_ARROW:LexerOp = "->";
+    var ASSIGN:LexerOp = "=";
 
-    var ADD_ASSIGN:LOp = "+=";
-    var SUB_ASSIGN:LOp = "-=";
-    var MULT_ASSIGN:LOp = "*=";
-    var DIV_ASSIGN:LOp = "/=";
-    var MOD_ASSIGN:LOp = "%=";
-    var SHL_ASSIGN:LOp = "<<=";
-    var SHR_ASSIGN:LOp = ">>=";
-    var USHR_ASSIGN:LOp = ">>>=";
-    var OR_ASSIGN:LOp = "|=";
-    var AND_ASSIGN:LOp = "&=";
-    var XOR_ASSIGN:LOp = "^=";
-    var NCOAL_ASSIGN:LOp = "??=";
+    var ADD_ASSIGN:LexerOp = "+=";
+    var SUB_ASSIGN:LexerOp = "-=";
+    var MULT_ASSIGN:LexerOp = "*=";
+    var DIV_ASSIGN:LexerOp = "/=";
+    var MOD_ASSIGN:LexerOp = "%=";
+    var SHL_ASSIGN:LexerOp = "<<=";
+    var SHR_ASSIGN:LexerOp = ">>=";
+    var USHR_ASSIGN:LexerOp = ">>>=";
+    var OR_ASSIGN:LexerOp = "|=";
+    var AND_ASSIGN:LexerOp = "&=";
+    var XOR_ASSIGN:LexerOp = "^=";
+    var NCOAL_ASSIGN:LexerOp = "??=";
 
-    var NOT:LOp = "!";
-    var NOT_BITWISE:LOp = "~";
-    var INCREMENT:LOp = "++";
-    var DECREMENT:LOp = "--";
+    var NOT:LexerOp = "!";
+    var NOT_BITWISE:LexerOp = "~";
+    var INCREMENT:LexerOp = "++";
+    var DECREMENT:LexerOp = "--";
 
-    var COMMENT:LOp = "//";
-    var COMMENT_OPEN:LOp = "/*";
-    var COMMENT_CLOSE:LOp = "*/";
+    var COMMENT:LexerOp = "//";
+    var COMMENT_OPEN:LexerOp = "/*";
+    var COMMENT_CLOSE:LexerOp = "*/";
 
-    public static final ALL_LOPS:Array<LOp> = [
+    public static final ALL_LOPS:Array<LexerOp> = [
         ADD, SUB, MULT, DIV, MOD,
         AND, OR, XOR, SHL, SHR, USHR,
         EQ, NEQ, GTE, LTE, GT, LT,
@@ -114,7 +114,7 @@ enum abstract LOp(String) from String to String {
     }
 
     // Not used that much so no need for hashmap (hash map wouldn't make a difference, array has 4 elements)
-    public static final ALL_LUNOPS:Array<LOp> = [
+    public static final ALL_LUNOPS:Array<LexerOp> = [
         NOT, NOT_BITWISE, INCREMENT, DECREMENT,
     ];
 
@@ -122,58 +122,58 @@ enum abstract LOp(String) from String to String {
      * Boiler plate for parser...
      * Should this be in the parser class?
      */
-    public static final LEXER_TO_EXPR_OP:Map<LOp, EBinop> = [
-        LOp.ADD => EBinop.ADD,
-        LOp.SUB => EBinop.SUB,
-        LOp.MULT => EBinop.MULT,
-        LOp.DIV => EBinop.DIV,
-        LOp.MOD => EBinop.MOD,
+    public static final LEXER_TO_EXPR_OP:Map<LexerOp, ExprBinop> = [
+        LexerOp.ADD => ExprBinop.ADD,
+        LexerOp.SUB => ExprBinop.SUB,
+        LexerOp.MULT => ExprBinop.MULT,
+        LexerOp.DIV => ExprBinop.DIV,
+        LexerOp.MOD => ExprBinop.MOD,
 
-        LOp.AND => EBinop.AND,
-        LOp.OR => EBinop.OR,
-        LOp.XOR => EBinop.XOR,
-        LOp.SHL => EBinop.SHL,
-        LOp.SHR => EBinop.SHR,
-        LOp.USHR => EBinop.USHR,
+        LexerOp.AND => ExprBinop.AND,
+        LexerOp.OR => ExprBinop.OR,
+        LexerOp.XOR => ExprBinop.XOR,
+        LexerOp.SHL => ExprBinop.SHL,
+        LexerOp.SHR => ExprBinop.SHR,
+        LexerOp.USHR => ExprBinop.USHR,
 
-        LOp.EQ => EBinop.EQ,
-        LOp.NEQ => EBinop.NEQ,
-        LOp.GTE => EBinop.GTE,
-        LOp.LTE => EBinop.LTE,
-        LOp.GT => EBinop.GT,
-        LOp.LT => EBinop.LT,
+        LexerOp.EQ => ExprBinop.EQ,
+        LexerOp.NEQ => ExprBinop.NEQ,
+        LexerOp.GTE => ExprBinop.GTE,
+        LexerOp.LTE => ExprBinop.LTE,
+        LexerOp.GT => ExprBinop.GT,
+        LexerOp.LT => ExprBinop.LT,
 
-        LOp.BOR => EBinop.BOR,
-        LOp.BAND => EBinop.BAND,
-        LOp.IS => EBinop.IS,
-        LOp.NCOAL => EBinop.NCOAL,
+        LexerOp.BOR => ExprBinop.BOR,
+        LexerOp.BAND => ExprBinop.BAND,
+        LexerOp.IS => ExprBinop.IS,
+        LexerOp.NCOAL => ExprBinop.NCOAL,
 
-        LOp.INTERVAL => EBinop.INTERVAL,
-        LOp.ARROW => EBinop.ARROW,
-        LOp.ASSIGN => EBinop.ASSIGN,
+        LexerOp.INTERVAL => ExprBinop.INTERVAL,
+        LexerOp.ARROW => ExprBinop.ARROW,
+        LexerOp.ASSIGN => ExprBinop.ASSIGN,
 
-        LOp.ADD_ASSIGN => EBinop.ADD_ASSIGN,
-        LOp.SUB_ASSIGN => EBinop.SUB_ASSIGN,
-        LOp.MULT_ASSIGN => EBinop.MULT_ASSIGN,
-        LOp.DIV_ASSIGN => EBinop.DIV_ASSIGN,
-        LOp.MOD_ASSIGN => EBinop.MOD_ASSIGN,
-        LOp.SHL_ASSIGN => EBinop.SHL_ASSIGN,
-        LOp.SHR_ASSIGN => EBinop.SHR_ASSIGN,
-        LOp.USHR_ASSIGN => EBinop.USHR_ASSIGN,
-        LOp.OR_ASSIGN => EBinop.OR_ASSIGN,
-        LOp.AND_ASSIGN => EBinop.AND_ASSIGN,
-        LOp.XOR_ASSIGN => EBinop.XOR_ASSIGN,
-        LOp.NCOAL_ASSIGN => EBinop.NCOAL_ASSIGN
+        LexerOp.ADD_ASSIGN => ExprBinop.ADD_ASSIGN,
+        LexerOp.SUB_ASSIGN => ExprBinop.SUB_ASSIGN,
+        LexerOp.MULT_ASSIGN => ExprBinop.MULT_ASSIGN,
+        LexerOp.DIV_ASSIGN => ExprBinop.DIV_ASSIGN,
+        LexerOp.MOD_ASSIGN => ExprBinop.MOD_ASSIGN,
+        LexerOp.SHL_ASSIGN => ExprBinop.SHL_ASSIGN,
+        LexerOp.SHR_ASSIGN => ExprBinop.SHR_ASSIGN,
+        LexerOp.USHR_ASSIGN => ExprBinop.USHR_ASSIGN,
+        LexerOp.OR_ASSIGN => ExprBinop.OR_ASSIGN,
+        LexerOp.AND_ASSIGN => ExprBinop.AND_ASSIGN,
+        LexerOp.XOR_ASSIGN => ExprBinop.XOR_ASSIGN,
+        LexerOp.NCOAL_ASSIGN => ExprBinop.NCOAL_ASSIGN
     ];
 
-    public static final LEXER_TO_EXPR_UNOP:Map<LOp, EUnop> = [
-        LOp.NOT_BITWISE => EUnop.NEG_BIT,
+    public static final LEXER_TO_EXPR_UNOP:Map<LexerOp, ExprUnop> = [
+        LexerOp.NOT_BITWISE => ExprUnop.NEG_BIT,
 
-        LOp.NOT => EUnop.NOT,
-        LOp.SUB => EUnop.NEG,
+        LexerOp.NOT => ExprUnop.NOT,
+        LexerOp.SUB => ExprUnop.NEG,
 
-        LOp.INCREMENT => EUnop.INC,
-        LOp.DECREMENT => EUnop.DEC
+        LexerOp.INCREMENT => ExprUnop.INC,
+        LexerOp.DECREMENT => ExprUnop.DEC
     ];
 }
 
@@ -476,7 +476,7 @@ class Lexer {
                             var preop:String = op;
                             op += String.fromCharCode(charCode);
                             
-                            if (!LOp.ALL_LOPS_LOOKUP.exists(op) && LOp.ALL_LOPS_LOOKUP.exists(preop)) {
+                            if (!LexerOp.ALL_LOPS_LOOKUP.exists(op) && LexerOp.ALL_LOPS_LOOKUP.exists(preop)) {
                                 if (op == COMMENT || op == COMMENT_OPEN)
                                     return comment(op, charCode);
 

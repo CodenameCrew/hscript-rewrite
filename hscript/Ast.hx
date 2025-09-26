@@ -31,8 +31,8 @@ enum ExprDef {
     EParent(expr:Expr); // ()
     EBlock(exprs:Array<Expr>); // { ... }
     EField(expr:Expr, field:String, ?isSafe:Bool);
-    EBinop(op:EBinop, left:Expr, right:Expr);
-    EUnop(op:EUnop, isPrefix:Bool, expr:Expr);
+    EBinop(op:ExprBinop, left:Expr, right:Expr);
+    EUnop(op:ExprUnop, isPrefix:Bool, expr:Expr);
     ECall(func:Expr, args:Array<Expr>);
     EIf(cond:Expr, thenExpr:Expr, ?elseExpr:Expr);
     EWhile(cond:Expr, body:Expr);
@@ -77,54 +77,54 @@ typedef ObjectField = {
  * Derived from haxe manual:
  * https://haxe.org/manual/expression-operators-binops.html
  */
-enum abstract EBinop(UInt8) {
-    var ADD:EBinop; // +
-    var SUB:EBinop; // -
-    var MULT:EBinop; // *
-    var DIV:EBinop; // /
-    var MOD:EBinop; // %
+enum abstract ExprBinop(UInt8) {
+    var ADD:ExprBinop; // +
+    var SUB:ExprBinop; // -
+    var MULT:ExprBinop; // *
+    var DIV:ExprBinop; // /
+    var MOD:ExprBinop; // %
 
-    var AND:EBinop; // &
-    var OR:EBinop; // |
-    var XOR:EBinop; // ^
-    var SHL:EBinop; // <<
-    var SHR:EBinop; // >>
-    var USHR:EBinop; // >>>
+    var AND:ExprBinop; // &
+    var OR:ExprBinop; // |
+    var XOR:ExprBinop; // ^
+    var SHL:ExprBinop; // <<
+    var SHR:ExprBinop; // >>
+    var USHR:ExprBinop; // >>>
 
-    var EQ:EBinop; // ==
-    var NEQ:EBinop; // !=
-    var GTE:EBinop; // >=
-    var LTE:EBinop; // <=
-    var GT:EBinop; // >
-    var LT:EBinop; // <
+    var EQ:ExprBinop; // ==
+    var NEQ:ExprBinop; // !=
+    var GTE:ExprBinop; // >=
+    var LTE:ExprBinop; // <=
+    var GT:ExprBinop; // >
+    var LT:ExprBinop; // <
 
-    var BOR:EBinop; // ||
-    var BAND:EBinop; // &&
-    var IS:EBinop; // is
-    var NCOAL:EBinop; // ??
+    var BOR:ExprBinop; // ||
+    var BAND:ExprBinop; // &&
+    var IS:ExprBinop; // is
+    var NCOAL:ExprBinop; // ??
 
-    var INTERVAL:EBinop; // ...
-    var ARROW:EBinop; // =>
-    var ASSIGN:EBinop; // =
+    var INTERVAL:ExprBinop; // ...
+    var ARROW:ExprBinop; // =>
+    var ASSIGN:ExprBinop; // =
 
-    var ADD_ASSIGN:EBinop; // +=
-    var SUB_ASSIGN:EBinop; // -=
-    var MULT_ASSIGN:EBinop; // *=
-    var DIV_ASSIGN:EBinop; // /=
-    var MOD_ASSIGN:EBinop; // %=
-    var SHL_ASSIGN:EBinop; // <<=
-    var SHR_ASSIGN:EBinop; // >>=
-    var USHR_ASSIGN:EBinop; // >>>=
-    var OR_ASSIGN:EBinop; // |=
-    var AND_ASSIGN:EBinop; // &=
-    var XOR_ASSIGN:EBinop; // ^=
-    var NCOAL_ASSIGN:EBinop; // ??=
+    var ADD_ASSIGN:ExprBinop; // +=
+    var SUB_ASSIGN:ExprBinop; // -=
+    var MULT_ASSIGN:ExprBinop; // *=
+    var DIV_ASSIGN:ExprBinop; // /=
+    var MOD_ASSIGN:ExprBinop; // %=
+    var SHL_ASSIGN:ExprBinop; // <<=
+    var SHR_ASSIGN:ExprBinop; // >>=
+    var USHR_ASSIGN:ExprBinop; // >>>=
+    var OR_ASSIGN:ExprBinop; // |=
+    var AND_ASSIGN:ExprBinop; // &=
+    var XOR_ASSIGN:ExprBinop; // ^=
+    var NCOAL_ASSIGN:ExprBinop; // ??=
 
     /**
      * Precedence gotten from:
      * https://haxe.org/manual/expression-operators-precedence.html
      */
-    public static final OP_PRECEDENCE:Array<Array<EBinop>> = [
+    public static final OP_PRECEDENCE:Array<Array<ExprBinop>> = [
         [MOD],
         [MULT, DIV],
         [ADD, SUB],
@@ -165,14 +165,14 @@ enum abstract EBinop(UInt8) {
  * Derived from haxe manual:
  * https://haxe.org/manual/expression-operators-unops.html
  */
-enum abstract EUnop(UInt8) {
-    var NEG_BIT:EUnop; // ~
+enum abstract ExprUnop(UInt8) {
+    var NEG_BIT:ExprUnop; // ~
 
-    var NOT:EUnop; // !
-    var NEG:EUnop; // -
+    var NOT:ExprUnop; // !
+    var NEG:ExprUnop; // -
 
-    var INC:EUnop; // ++
-    var DEC:EUnop; // --
+    var INC:ExprUnop; // ++
+    var DEC:ExprUnop; // --
 }
 
 enum EImportMode {
