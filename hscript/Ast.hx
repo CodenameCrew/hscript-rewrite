@@ -40,7 +40,7 @@ enum ExprDef {
     EForKeyValue(key:VariableType, value:VariableType, iterator:Expr, body:Expr);
     EBreak;
     EContinue;
-    EFunction(args:Array<Argument>, body:Expr, ?name:VariableType, ?isPublic:Bool, ?isStatic:Bool);
+    EFunction(args:Array<Argument>, body:Expr, name:VariableType, isPublic:Bool, isStatic:Bool);
     EReturn(?expr:Expr);
     EArray(expr:Expr, index:Expr); // arr[i]
     EMapDecl(keys:Array<Expr>, values:Array<Expr>);

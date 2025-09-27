@@ -26,6 +26,7 @@ class Error {
 			case EInvalidIterator(v): "Invalid iterator: "+v;
 			case EInvalidOp(op): "Invalid operator: "+op;
 			case EInvalidAccess(f): "Invalid access to field " + f;
+			case EInvalidClass(className): "Type not found " + className;
 			case ECustom(msg): msg;
 		};
 		return (this.origin != null ? (this.origin + ":") : "") + this.line + ": " + message;
@@ -40,7 +41,8 @@ enum ErrorDef {
 	EInvalidPreprocessor( msg : String );
 	EUnknownVariable( v : String );
 	EInvalidIterator( v : String );
-	EInvalidOp( op : String );
+	EInvalidOp( op : Dynamic );
 	EInvalidAccess( f : String );
+	EInvalidClass( className : String );
 	ECustom( msg : String );
 }

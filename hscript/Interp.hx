@@ -1,9 +1,607 @@
 package hscript;
 
+import hscript.Ast.VariableInfo;
+import hscript.Ast.EImportMode;
+import haxe.ds.Either;
+import hscript.Ast.Argument;
+import hscript.Ast.SwitchCase;
+import haxe.Constraints.Function;
+import hscript.Ast.Expr;
+import hscript.Error.ErrorDef;
+import hscript.Ast.VariableType;
 import hscript.Lexer.LConst;
 import hscript.Ast.ExprBinop;
+import haxe.Constraints.IMap;
 
-class Interp {}
+enum IStop {
+    ISBreak;
+    ISContinue;
+    ISReturn;
+}
+
+typedef IVariableScopeChange = {
+    var ?old:IVariableScopeChange;
+
+    var oldDeclared:Bool;
+    var oldValue:Dynamic;
+    var scope:Int;
+}
+
+class Interp {
+    /**
+     * Our variables used no matter what scope, fastest by far winner when it comes to raw reading and writing.
+     * 
+     * Two arrays (mixed): 31.8157 ms
+     * Enum array (mixed): 188.1146 ms
+     * IntMap (mixed): 146.5216 ms
+     * Sentinel enum array (mixed): 125.6402 ms
+     * Int sentinel array (mixed): 18.828 ms (not accounting for overhead of collisions)
+     * Object array (mixed): 200.3166 ms
+     * 
+     * Scope changes will create variable changes that will be popped and reversed on the main array see changes array.
+     * hopefully this is the right choice and doesn't give any headaches later :D -lunar
+     */
+    private var variablesDeclared:Array<Bool> = [];
+    private var variablesValues:Array<Dynamic> = [];
+
+    private var variableNames:Array<String> = [];
+    private var changes:Array<IVariableScopeChange> = [];
+
+    private var scope:Int = 0;
+    private var inTry:Bool = false;
+    private var returnValue:Dynamic = null;
+
+    public var origin:String = null;
+
+    public function new(?origin:String) {
+        this.origin = origin ?? "";
+    }
+
+    public function execute(expr:Expr):Dynamic {
+        switch (expr.expr) {
+            case EInfo(info, expr):
+                loadTables(info);
+                return interpReturnExpr(expr);
+            default:
+                throw error(ECustom("Missing EInfo()"), expr.line);
+        }
+    }
+
+    private function loadTables(info:VariableInfo) {
+        variablesDeclared = cast new haxe.ds.Vector<Dynamic>(info.length);
+        variablesValues = cast new haxe.ds.Vector<Dynamic>(info.length);
+
+        variablesValues = info.copy();
+    }
+
+    private function interpExpr(expr:Expr):Dynamic {
+        trace(expr, variablesValues);
+        return switch (expr.expr) {
+            case EMeta(name, args, expr): interpExpr(expr);
+            case EConst(const): StaticInterp.evaluateConst(const);
+            case EIdent(name): return if (variablesDeclared[name]) variablesValues[name] else resolve(name);
+            case EVar(name, init, isPublic, isStatic):
+                assign(name, init == null ? null : interpExpr(init));
+                return null;
+            case EBinop(op, left, right): 
+                switch (op) {
+                    case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | 
+                        SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN: assignExprOp(op, left, right);
+                    case EQ: assignExpr(left, right);
+                    default: StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right));
+                }
+            case EParent(expr): interpExpr(expr);
+            case EBlock(exprs): 
+                increaseScope();
+                var value:Dynamic = null;
+                for (expr in exprs) 
+                    value = interpExpr(expr);
+
+                decreaseScope();
+                value;
+            case EField(expr, field, isSafe): if (isSafe && field == null) null else getObjectField(interpExpr(expr), field);
+            case EUnop(op, isPrefix, expr):
+                switch (op) {
+                    case INC: assignExprOp(ADD_ASSIGN, expr, {expr: EConst(LCInt(1)), line: expr.line});
+                    case DEC: assignExprOp(ADD_ASSIGN, expr, {expr: EConst(LCInt(-1)), line: expr.line});
+                    case NOT: interpExpr(expr) != null;
+                    case NEG: -interpExpr(expr);
+                    case NEG_BIT: ~interpExpr(expr);
+                }
+            case ECall(func, args):
+                var argValues:Array<Dynamic> = [for (arg in args) interpExpr(arg)];
+                switch (func.expr) {
+                    case EField(expr, field, isSafe):
+                        var object:Dynamic = interpExpr(expr);
+                        if (object == null) {
+                            if (!isSafe) error(EInvalidAccess(field), expr.line);
+                            else null;
+                        }
+                        return callObjectField(object, getObjectField(object, field), argValues);
+                    default: return callObjectField(null, interpExpr(func), argValues);
+                }
+            case EIf(cond, thenExpr, elseExpr):
+                return if (interpExpr(cond) == true) 
+                    interpExpr(thenExpr);
+                else if (elseExpr != null)
+                    interpExpr(elseExpr);
+                else null;
+            case ETernary(cond, thenExpr, elseExpr): 
+                return if (interpExpr(cond) == true) interpExpr(thenExpr);
+                else interpExpr(elseExpr);
+            case EBreak: throw ISBreak;
+            case EContinue: throw ISContinue;
+            case EMapDecl(keys, values): interpMap([for (key in keys) interpExpr(key)], [for (val in values) interpExpr(val)]);
+            case EArrayDecl(items): [for (item in items) interpExpr(item)];
+            case EArray(expr, index):
+                var array:Dynamic = interpExpr(expr);
+                var index:Dynamic = interpExpr(index);
+
+                if (array is IMap) getMapValue(array, index);
+                else array[index];
+            case ENew(className, args): interpNew(className, args);
+            case EThrow(expr): throw interpExpr(expr);
+            case EObject(fields):
+                var object:Dynamic = {};
+                for (field in fields) setObjectField(object, field.name, interpExpr(field.expr));
+                object;
+            case EForKeyValue(key, value, iterator, body): forKeyValueLoop(key, value, iterator, body); null;
+            case EFor(varName, iterator, body): forLoop(varName, iterator, body); null;
+            case EWhile(cond, body): whileLoop(cond, body); null;
+            case EDoWhile(cond, body): doWhileLoop(cond, body); null;
+            case ESwitch(expr, cases, defaultExpr): interpSwitch(expr, cases, defaultExpr);
+            case EFunction(args, body, name, isPublic, isStatic): interpFunction(args, body, name, isPublic, isStatic);
+            case ETry(expr, catchVar, catchExpr): interpTry(expr, catchVar, catchExpr);
+            case EReturn(expr):
+                returnValue = expr == null ? null : interpExpr(expr);
+                throw ISReturn;
+            case EImport(path, mode): 
+                var importValue:Dynamic = interpImport(path, mode);
+                if (importValue == null) error(EInvalidClass(path), expr.line);
+                return importValue;
+            case EInfo(info, _): error(ECustom("Invalid EInfo()"), expr.line);
+        }
+    }
+
+    private function interpReturnExpr(expr:Expr):Dynamic {
+        try {
+            return interpExpr(expr);
+        } catch (stop:IStop) {
+            switch (stop) {
+                case ISBreak: throw "Invalid break";
+                case ISContinue: throw "Invalid continue";
+                case ISReturn:
+                    var value:Dynamic = returnValue;
+                    returnValue = null;
+                    return value;
+            }
+        }
+    }
+
+    private inline function interpImport(path:String, mode:EImportMode):Dynamic {
+        if (mode == All) return null; // not implemented
+
+        var splitPathName:Array<String> = path.split(".");
+        if (splitPathName.length <= 0) return null;
+
+        var lastPathName:String = splitPathName[splitPathName.length-1];
+        var variableName:String = switch (mode) {
+            case As(name): name;
+            default: lastPathName;
+        }
+
+        var variableID:VariableType = variableNames.indexOf(variableName);
+        if (variableID != -1 && variablesDeclared[variableID])
+            return variablesValues[variableID];
+
+        var testClass:Either<Class<Dynamic>, Enum<Dynamic>> = resolvePath(path);
+        if (testClass == null) {
+            var splitPathCopy:Array<String> = splitPathName.copy();
+            splitPathCopy.pop();
+
+            testClass = resolvePath(splitPathCopy.join("."));
+        }
+
+        if (testClass != null) {
+            var value:Dynamic = switch (testClass) {
+                case Left(resolvedClass): resolvedClass;
+                case Right(rawEnum): resolveEnum(rawEnum);
+            }
+
+            variableID = variableNames.indexOf(variableName);
+            if (variableID != -1) assign(variableID, value);
+
+            return value;
+        }
+
+        return null;
+    } 
+
+    private function interpFunction(args:Array<Argument>, body:Expr, name:VariableType, ?isPublic:Bool, ?isStatic:Bool) {
+        var argsNeeded:Int = 0;
+        for (arg in args) if (arg.opt == null || !arg.opt) argsNeeded++;
+
+        var reflectiveFunction:Dynamic = null;
+        var interpFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
+            if ((inputArgs == null ? 0 : inputArgs.length) != argsNeeded) {
+                error(ECustom(
+                    "Invalid number of parameters. Got " + inputArgs.length + ", required " + argsNeeded +
+                    (name != null ? " for function '" + name + "'" : "")
+                ), body.line);
+
+                var fixedArgs:Array<Dynamic> = [];
+                var extraArgs:Int = inputArgs.length - argsNeeded;
+                var position:Int = 0;
+
+                for (arg in args) {
+                    if (arg.opt) {
+                        if (extraArgs > 0) {
+                            fixedArgs.push(inputArgs[position++]);
+                            extraArgs--;
+                        } else fixedArgs.push(null);
+                    } else fixedArgs.push(inputArgs[position++]);
+                }
+
+                inputArgs = fixedArgs;
+            }
+
+            increaseScope();
+            assign(name, reflectiveFunction); // self recurssion
+
+            for (arg in 0...args.length) assign(args[arg].name, inputArgs[arg]);
+            var ret:Dynamic = null;
+
+            if (inTry) {
+                try {
+                    ret = interpReturnExpr(body);
+                } catch (error:Dynamic) {
+                    decreaseScope();
+                    throw error;
+                }
+            } else {
+                ret = interpReturnExpr(body);
+            }
+            
+            decreaseScope();
+            return ret;
+        }
+
+        reflectiveFunction = Reflect.makeVarArgs(interpFunction);
+        if (name != null) assign(name, reflectiveFunction);
+        return reflectiveFunction;
+    }
+
+    private inline function interpTry(expr, catchVar, catchExpr):Dynamic {
+        var oldTryState:Bool = inTry;
+        increaseScope();
+        
+        try {
+            inTry = true;
+            var value:Dynamic = interpExpr(expr);
+            decreaseScope();
+
+            inTry = oldTryState;
+            return value;
+        } catch (stop:IStop) {
+            inTry = oldTryState;
+            decreaseScope();
+            throw stop;
+        } catch (error:Dynamic) {
+            inTry = oldTryState;
+            decreaseScope();
+
+            increaseScope();
+            assign(catchVar, error);
+            var value:Dynamic = interpExpr(catchExpr);
+            decreaseScope();
+
+            return value;
+        }
+    }
+
+    private inline function forKeyValueLoop(key:VariableType, value:VariableType, iterator:Expr, body:Expr) {
+        increaseScope();
+
+        assign(key, null);
+        assign(value, null);
+
+        var iterator:KeyValueIterator<Dynamic, Dynamic> = makeKeyValueIteratorExpr(iterator);
+        while (iterator.hasNext()) {
+            var iteratorValue:Dynamic = iterator.next();
+            assign(key, iteratorValue.key);
+            assign(value, iteratorValue.value);
+            if (!interpLoop(body)) break;
+        }
+
+        decreaseScope();
+    }
+
+    private inline function forLoop(varName:VariableType, iterator:Expr, body:Expr) {
+        increaseScope();
+
+        assign(varName, null);
+
+        var iterator:Iterator<Dynamic> = makeIteratorExpr(iterator);
+        while (iterator.hasNext()) {
+            assign(varName, iterator.next());
+            if (!interpLoop(body)) break;
+        }
+
+        decreaseScope();
+    }
+
+    private inline function makeIteratorExpr(expr:Expr):Iterator<Dynamic> {
+        var untypedIterator:Dynamic = interpExpr(expr);
+        var iterator:Iterator<Dynamic> = makeIterator(untypedIterator);
+        return iterator == null ? throw error(EInvalidIterator(untypedIterator), expr.line) : iterator;
+    }
+
+    private inline function makeKeyValueIteratorExpr(expr:Expr):KeyValueIterator<Dynamic, Dynamic> {
+        var untypedIterator:Dynamic = interpExpr(expr);
+        var iterator:KeyValueIterator<Dynamic, Dynamic> = makeKeyValueIterator(untypedIterator);
+        return iterator == null ? throw error(EInvalidIterator(untypedIterator), expr.line) : iterator;
+    }
+
+    private inline function makeIterator(value:Dynamic):Iterator<Dynamic> {
+        // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L572-L584
+		#if js // don't use try/catch (very slow)
+		if(value is Array) return (value:Array<Dynamic>).iterator();
+		if(value.iterator != null) value = value.iterator();
+		#else
+		#if (cpp) if (value.iterator != null) #end
+			try value = value.iterator() catch(e:Dynamic) {};
+		#end
+		if(value.hasNext == null || value.next == null) return null;
+		return value;
+	}
+
+	private inline function makeKeyValueIterator(value:Dynamic):KeyValueIterator<Dynamic,Dynamic> {
+        //https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L586-L597
+		#if js // don't use try/catch (very slow)
+		if(value is Array) return (value:Array<Dynamic>).keyValueIterator();
+		if(value.iterator != null) value = value.keyValueIterator();
+		#else
+		try value = value.keyValueIterator() catch(e:Dynamic) {};
+		#end
+		if(value.hasNext == null || value.next == null) return null;
+		return value;
+	}
+
+    private inline function whileLoop(cond:Expr, body:Expr) {
+        increaseScope();
+
+        while (interpExpr(cond) == true) {
+            if (!interpLoop(body)) break;
+        }
+
+        decreaseScope();
+    }
+
+    private inline function doWhileLoop(cond:Expr, body:Expr) {
+        increaseScope();
+
+        do {
+            if (!interpLoop(body)) break;
+        } while (interpExpr(cond) == true);
+
+        decreaseScope();
+    }
+
+    private inline function interpLoop(expr:Expr):Bool {
+        var continueLoop:Bool = true;
+
+        try {
+            interpExpr(expr);
+        } catch (stop:IStop) {
+            switch (stop) {
+                case ISContinue:
+                case ISBreak: continueLoop = false;
+                case ISReturn: throw stop;
+            }
+        }
+        return continueLoop;
+    }
+
+    private inline function interpSwitch(expr:Expr, cases:Array<SwitchCase>, defaultExpr:Expr):Dynamic {
+        var switchValue:Dynamic = interpExpr(expr);
+        var foundMatch:Bool = false;
+
+        for (switchCase in cases) {
+            for (value in switchCase.values)
+                if (interpExpr(value) == switchValue) {foundMatch = true; break;}
+
+            if (foundMatch) switchValue = interpExpr(switchCase.expr);
+        }
+
+        if (!foundMatch) switchValue = defaultExpr != null ? interpExpr(defaultExpr) : null;
+        return switchValue;
+    }
+
+    private inline function interpNew(className:VariableType, args:Array<Dynamic>):Dynamic {
+        var classType = Type.resolveClass(variableNames[className]);
+        if (classType == null) classType = resolve(className);
+        return Type.createInstance(classType, args);
+    }
+
+    private inline function interpMap(keys:Array<Dynamic>, values:Array<Dynamic>):Dynamic {
+        // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L655-L664
+        var isAllString:Bool = true;
+		var isAllInt:Bool = true;
+		var isAllObject:Bool = true;
+		var isAllEnum:Bool = true;
+
+		for (key in keys) {
+			isAllString = isAllString && (key is String);
+			isAllInt = isAllInt && (key is Int);
+			isAllObject = isAllObject && Reflect.isObject(key);
+			isAllEnum = isAllEnum && Reflect.isEnumValue(key);
+		}
+
+        var map:IMap<Dynamic, Dynamic> = {
+            if (isAllInt) new haxe.ds.IntMap<Dynamic>();
+			else if (isAllString) new haxe.ds.StringMap<Dynamic>();
+			else if (isAllEnum) new haxe.ds.EnumValueMap<Dynamic, Dynamic>();
+			else if (isAllObject) new haxe.ds.ObjectMap<Dynamic, Dynamic>();
+			else new haxe.ds.Map<Dynamic, Dynamic>();
+        }
+
+        for (i in 0...keys.length)
+            map.set(keys[i], values[i]);
+
+        return map;
+    }
+
+    private inline function assignExpr(left:Expr, right:Expr):Dynamic {
+        var assignValue:Dynamic = interpExpr(right);
+        return switch (left.expr) {
+            case EIdent(name): assign(name, assignValue);
+            case EField(expr, field, isSafe):
+                var object:Dynamic = interpExpr(expr);
+                if (isSafe && object == null) return null;
+                setObjectField(object, field, assignValue);
+
+                assignValue;
+            case EArray(expr, index):
+                var array:Dynamic = interpExpr(expr);
+                var index:Dynamic = interpExpr(index);
+
+                if (array is IMap) setMapValue(array, index, assignValue);
+                else array[index] = assignValue;
+
+                assignValue;
+            default: error(EInvalidOp(EQ), left.line);
+        }
+    }
+
+    private inline function assignExprOp(op:ExprBinop, left:Expr, right:Expr):Dynamic {
+        return switch (left.expr) {
+            case EIdent(name): assign(name, StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right)));
+            case EField(expr, field, isSafe):
+                var object:Dynamic = interpExpr(expr);
+                if (object == null) {
+                    if (!isSafe) error(EInvalidAccess(field), expr.line);
+                    else null;
+                } else {
+                    var fieldValue:Dynamic = getObjectField(object, field);
+                    var assignValue:Dynamic = interpExpr(right);
+
+                    setObjectField(object, field, StaticInterp.evaluateBinop(op, fieldValue, assignValue));
+                }
+            case EArray(expr, index):
+                var array:Dynamic = interpExpr(expr);
+                var index:Dynamic = interpExpr(index);
+
+                var assignValue:Dynamic = null;
+                if (array is IMap) {
+                    assignValue = StaticInterp.evaluateBinop(op, getMapValue(array, index), interpExpr(right));
+                    setMapValue(array, index, assignValue);
+                } else {
+                    assignValue = StaticInterp.evaluateBinop(op, array[index], interpExpr(right));
+                    array[index] = assignValue;
+                }
+                assignValue;
+            default: error(EInvalidOp(op), left.line);
+        }
+    }
+
+    private inline function assign(name:VariableType, value:Dynamic) {
+        if (scope > 0) {
+            changes[name] = {
+                old: changes[name],
+                oldDeclared: variablesDeclared[name],
+                oldValue: variablesValues[name],
+                scope: this.scope
+            };
+        }
+
+        variablesDeclared[name] = true;
+        variablesValues[name] = value;
+
+        return value;
+    }
+
+    private inline function unAssign(name:VariableType) {
+        variablesDeclared[name] = false;
+        variablesValues[name] = null;
+    }
+
+    private inline function increaseScope() this.scope++;
+
+    private inline function decreaseScope() {
+        this.scope--;
+        scopeChanges();
+    }
+
+    private inline function scopeChanges() {
+        for (name in 0...changes.length) {
+            var change:IVariableScopeChange = changes[name];
+            if (change.scope > this.scope) {
+                if (change.oldDeclared) 
+                    assign(name, change.oldValue);
+                else unAssign(name);
+                
+                if (change.old != null) changes[name] = change.old;
+            }
+        }
+    }
+
+    private inline function resolve(ident:VariableType):Dynamic {
+        return null;
+    }
+
+    // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L646-L652
+	private inline function getMapValue(map:Dynamic, key:Dynamic):Dynamic {
+		return cast(map, IMap<Dynamic, Dynamic>).get(key);
+	}
+
+	private inline function setMapValue(map:Dynamic, key:Dynamic, value:Dynamic):Void {
+		cast(map, IMap<Dynamic, Dynamic>).set(key, value);
+	}
+
+    private function resolvePath(path:String):Either<Class<Dynamic>, Enum<Dynamic>> {
+        var resolvedClass:Class<Dynamic> = Type.resolveClass(path);
+        if (resolvedClass != null) return Left(resolvedClass);
+
+        var resolvedEnum:Enum<Dynamic> = Type.resolveEnum(path);
+        if (resolvedEnum != null) return Right(resolvedEnum);
+
+        return null;
+    }
+
+    private function resolveEnum(enums:Enum<Dynamic>):Dynamic {
+        var enumStorage:Dynamic = {};
+        for (name in enums.getConstructors()) {
+            try {
+                Reflect.setField(enumStorage, name, enums.createByName(name));
+            } catch (error:Dynamic) {
+                try {
+                    Reflect.setField(enumStorage, name, Reflect.makeVarArgs((args:Array<Dynamic>) -> enums.createByName(name, args)));
+                } catch (e:Dynamic) {
+                    throw error;
+                }
+            }
+        }
+        return enumStorage;
+    }
+
+    private inline function getObjectField(object:Dynamic, field:String) {
+        return Reflect.getProperty(object, field);
+    }
+
+    private inline function setObjectField(object:Dynamic, field:String, value:Dynamic) {
+        Reflect.setProperty(object, field, value);
+        return value;
+    }
+
+    private inline function callObjectField(object:Dynamic, field:Function, args:Array<Dynamic>) {
+        return Reflect.callMethod(object, field, args);
+    }
+
+    private inline function error(err:ErrorDef, line:Int):Dynamic {
+		throw new Error(err, null, null, origin, line);
+        return null;
+	}
+}
 
 class StaticInterp {
     public static inline function evaluateBinop(op:ExprBinop, val1 :Dynamic, val2:Dynamic):Dynamic {
@@ -28,23 +626,23 @@ class StaticInterp {
             case GT: return val1 > val2;
             case LT: return val1 < val2;
 
+            case ADD_ASSIGN: return val1 + val2;
+            case SUB_ASSIGN: return val1 - val2;
+            case MULT_ASSIGN: return val1 * val2;
+            case DIV_ASSIGN: return val1 / val2;
+            case MOD_ASSIGN: return val1 % val2;
+            case SHL_ASSIGN: return val1 << val2;
+            case SHR_ASSIGN: return val1 >> val2;
+            case USHR_ASSIGN: return val1 >>> val2;
+            case OR_ASSIGN: return val1 | val2;
+            case AND_ASSIGN: return val1 & val2;
+            case XOR_ASSIGN: return val1 ^ val2;
+            case NCOAL_ASSIGN: return val1 ?? val2;
+
             case BOR: return val1 || val2;
             case BAND: return val1 && val2;
             case IS: return Std.isOfType(val1 , val2);
             case NCOAL: return val1 ?? val2;
-
-            case ADD_ASSIGN: return val1 += val2;
-            case SUB_ASSIGN: return val1 -= val2;
-            case MULT_ASSIGN: return val1 *= val2;
-            case DIV_ASSIGN: return val1 /= val2;
-            case MOD_ASSIGN: return val1 %= val2;
-            case SHL_ASSIGN: return val1 <<= val2;
-            case SHR_ASSIGN: return val1 >>= val2;
-            case USHR_ASSIGN: return val1 >>>= val2;
-            case OR_ASSIGN: return val1 |= val2;
-            case AND_ASSIGN: return val1 &= val2;
-            case XOR_ASSIGN: return val1 ^= val2;
-            case NCOAL_ASSIGN: return val1 ??= val2;
 
             default: throw new Error(EInvalidOp("Invalid operator: " + op));
         }
