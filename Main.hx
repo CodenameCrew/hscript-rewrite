@@ -1,27 +1,26 @@
 package;
 
-import haxe.Timer;
-import hscript.Parser;
 import hscript.Interp;
+import hscript.Parser;
 
 class Main {
+    public static function fib(n) {
+        if (n <= 1) return n;
+        return fib(n - 1) + fib(n - 2);
+    }
+
     public static function main() {
-            var parser = new Parser();
-            var expr = parser.parseString("
-                function fib(n) {
-                    if (n <= 1) return n;
-                    return fib(n - 1) + fib(n - 2);
-                }
-
-                fib(20);
-            ");
-
-            var startTime:Float = Timer.stamp();
-            var e:Int = 0;
-            var interp = new Interp();
-            for (i in 0...50) {
-                e += interp.execute(expr);
+        var parser = new Parser();
+        var expr = parser.parseString("
+            function fib(n) {
+                if (n <= 1) return n;
+                return fib(n - 1) + fib(n - 2);
             }
-            trace(Timer.stamp() - startTime, e);
+
+            fib(20);
+        ");
+
+        var interp = new Interp();
+        trace(interp.execute(expr), fib(20));
     }
 }
