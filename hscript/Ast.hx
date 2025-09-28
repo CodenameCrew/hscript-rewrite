@@ -12,9 +12,14 @@ typedef UInt8 = java.types.UInt8;
 typedef UInt8 = UInt; // fallback for JS, Python, etc.
 #end
 
-typedef Expr = {
-	var expr:ExprDef;
-	var line:Int;
+class Expr {
+	public var expr:ExprDef;
+	public var line:Int;
+
+    public function new(expr:ExprDef, line:Int) {
+        this.expr = expr;
+        this.line = line;
+    }
 }
 
 /**
@@ -57,20 +62,36 @@ enum ExprDef {
     EInfo(info:VariableInfo, expr:Expr);
 }
 
-typedef Argument = {
-    var name:VariableType;
-    var ?opt:Bool;
-    var ?value:Expr;
-};
+class Argument {
+    public var name:VariableType;
+    public var opt:Bool;
+    public var value:Expr;
 
-typedef SwitchCase = {
-    var values:Array<Expr>;
-    var expr:Expr;
+    public function new(name:VariableType, opt:Bool = false, ?value:Expr) {
+        this.name = name;
+        this.opt = opt;
+        this.value = value;
+    }
 }
 
-typedef ObjectField = {
-    var name:String; 
-    var expr:Expr;
+class SwitchCase {
+    public var values:Array<Expr>;
+    public var expr:Expr;
+
+    public function new(values:Array<Expr>, expr:Expr) {
+        this.values = values;
+        this.expr = expr;
+    }
+}
+
+class ObjectField {
+    public var name:String; 
+    public var expr:Expr;
+
+    public function new(name:String, expr:Expr) {
+        this.name = name;
+        this.expr = expr;
+    }
 }
 
 /**

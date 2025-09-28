@@ -19,12 +19,13 @@ enum IStop {
     ISReturn;
 }
 
-typedef IVariableScopeChange = {
-    var ?old:IVariableScopeChange;
+@:structInit
+class IVariableScopeChange {
+    public var old:IVariableScopeChange;
 
-    var oldDeclared:Bool;
-    var oldValue:Dynamic;
-    var scope:Int;
+    public var oldDeclared:Bool;
+    public var oldValue:Dynamic;
+    public var scope:Int;
 }
 
 class Interp {
@@ -67,19 +68,31 @@ class Interp {
         }
     }
 
+    public function reset() {
+        this.variablesDeclared = [];
+        this.variablesValues = [];
+
+        this.variableNames = [];
+        this.changes = [];
+
+        this.scope = 0;
+        this.inTry = false;
+        this.returnValue = null;
+    }
+
     private function loadTables(info:VariableInfo) {
         variablesDeclared = cast new haxe.ds.Vector<Dynamic>(info.length);
         variablesValues = cast new haxe.ds.Vector<Dynamic>(info.length);
 
-        variablesValues = info.copy();
+        variableNames = info.copy();
     }
 
     private function interpExpr(expr:Expr):Dynamic {
-        trace(expr, variablesValues);
         return switch (expr.expr) {
             case EMeta(name, args, expr): interpExpr(expr);
             case EConst(const): StaticInterp.evaluateConst(const);
-            case EIdent(name): return if (variablesDeclared[name]) variablesValues[name] else resolve(name);
+            case EIdent(name): 
+                if (variablesDeclared[name]) variablesValues[name] else resolve(name);
             case EVar(name, init, isPublic, isStatic):
                 assign(name, init == null ? null : interpExpr(init));
                 return null;
@@ -91,19 +104,16 @@ class Interp {
                     default: StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right));
                 }
             case EParent(expr): interpExpr(expr);
-            case EBlock(exprs): 
-                increaseScope();
+            case EBlock(exprs):
                 var value:Dynamic = null;
-                for (expr in exprs) 
+                for (expr in exprs)
                     value = interpExpr(expr);
-
-                decreaseScope();
                 value;
             case EField(expr, field, isSafe): if (isSafe && field == null) null else getObjectField(interpExpr(expr), field);
             case EUnop(op, isPrefix, expr):
                 switch (op) {
-                    case INC: assignExprOp(ADD_ASSIGN, expr, {expr: EConst(LCInt(1)), line: expr.line});
-                    case DEC: assignExprOp(ADD_ASSIGN, expr, {expr: EConst(LCInt(-1)), line: expr.line});
+                    case INC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line));
+                    case DEC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(-1)), expr.line));
                     case NOT: interpExpr(expr) != null;
                     case NEG: -interpExpr(expr);
                     case NEG_BIT: ~interpExpr(expr);
@@ -219,7 +229,7 @@ class Interp {
 
     private function interpFunction(args:Array<Argument>, body:Expr, name:VariableType, ?isPublic:Bool, ?isStatic:Bool) {
         var argsNeeded:Int = 0;
-        for (arg in args) if (arg.opt == null || !arg.opt) argsNeeded++;
+        for (arg in args) if (!arg.opt) argsNeeded++;
 
         var reflectiveFunction:Dynamic = null;
         var interpFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
@@ -505,7 +515,7 @@ class Interp {
     }
 
     private inline function assign(name:VariableType, value:Dynamic) {
-        if (scope > 0) {
+        if (scope > 0 && (changes[name] == null || changes[name].scope <= this.scope)) {
             changes[name] = {
                 old: changes[name],
                 oldDeclared: variablesDeclared[name],
@@ -520,12 +530,7 @@ class Interp {
         return value;
     }
 
-    private inline function unAssign(name:VariableType) {
-        variablesDeclared[name] = false;
-        variablesValues[name] = null;
-    }
-
-    private inline function increaseScope() this.scope++;
+    private inline function increaseScope() {this.scope++;}
 
     private inline function decreaseScope() {
         this.scope--;
@@ -536,9 +541,13 @@ class Interp {
         for (name in 0...changes.length) {
             var change:IVariableScopeChange = changes[name];
             if (change.scope > this.scope) {
-                if (change.oldDeclared) 
-                    assign(name, change.oldValue);
-                else unAssign(name);
+                if (change.oldDeclared) {
+                    variablesDeclared[name] = true;
+                    variablesValues[name] = change.oldValue;
+                } else {
+                    variablesDeclared[name] = false;
+                    variablesValues[name] = null;
+                }
                 
                 if (change.old != null) changes[name] = change.old;
             }

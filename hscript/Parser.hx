@@ -97,13 +97,13 @@ class Parser {
                             case LTCloseP:
                                 reverseToken();
                                 switch (expr.expr) {
-                                    case EIdent(name): return parseLambda([{name: name}]);
+                                    case EIdent(name): return parseLambda([new Argument(name)]);
                                     default:
                                 }
                             case LTComma: 
                                 reverseToken();
                                 switch (expr.expr) {
-                                    case EIdent(name): return parseLambda([{name: name}]);
+                                    case EIdent(name): return parseLambda([new Argument(name)]);
                                     default:
                                 }
                             default:
@@ -111,17 +111,17 @@ class Parser {
                     case LTComma:
                         reverseToken();
                         switch (expr.expr) {
-                            case EIdent(name): return parseLambda([{name: name}]);
+                            case EIdent(name): return parseLambda([new Argument(name)]);
                             default:
                         }
                     case LTIdentifier(identifier):
                         if (expr == null) {
                             if (maybe(LTColon)) parseType(); // (?arg:Int)
-                            return parseLambda([{name: variableID(identifier), opt: true}]);
+                            return parseLambda([new Argument(variableID(identifier), true)]);
                         }
 
                         switch (expr.expr) {
-                            case EIdent(name): return parseLambda([{name: name, opt: true}]);
+                            case EIdent(name): return parseLambda([new Argument(name, true)]);
                             default:
                         }
                     case LTEof: return expr;
@@ -315,7 +315,6 @@ class Parser {
                 ensure(LTCloseP);
 
                 var expr:Expr = parseExpr();
-                maybe(LTSemiColon);
 
                 var elseExpr:Expr = null;
                 if (maybe(LTKeyWord(ELSE)))
@@ -415,7 +414,7 @@ class Parser {
                 while (true) {
                     switch (readToken()) {
                         case LTKeyWord(CASE):
-                            var switchCase:SwitchCase = {values: [], expr: null};
+                            var switchCase:SwitchCase = new SwitchCase([], null);
                             cases.push(switchCase);
 
                             while (true) {
@@ -782,7 +781,7 @@ class Parser {
         if (maybe(LTCloseP)) return args;
         
         while (true) {
-			var argument:Argument = {name: null};
+			var argument:Argument = new Argument(null);
 
             if (maybe(LTQuestion)) argument.opt = true;
             argument.name = variableID(parseIdent());
@@ -823,7 +822,7 @@ class Parser {
             ensure(LTColon);
 
             var expr:Expr = parseExpr();
-            fields.push({name: fieldName, expr: expr});
+            fields.push(new ObjectField(fieldName, expr));
 
             switch (readToken()) {
                 case LTCloseCB: break;
@@ -858,10 +857,7 @@ class Parser {
     }
 
     private function create(expr:ExprDef):Expr {
-        return {
-            expr: expr,
-            line: readLine()
-        };
+        return new Expr(expr, readLine());
     }
 
     private function isBlock(expr:Expr):Bool {
