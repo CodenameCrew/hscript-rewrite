@@ -61,6 +61,9 @@ class Interp {
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
 
+    public var publicVariables:StringMap<Dynamic>;
+	public static var staticVariables:StringMap<Dynamic> = new StringMap<Dynamic>();
+
     private var changes:Vector<IVariableScopeChange>;
 
     private var scope:Int = 0;
@@ -88,6 +91,7 @@ class Interp {
         this.variablesValues = null;
 
         this.variableNames = null;
+        this.variablesLookup = null;
         this.changes = null;
 
         this.scope = 0;
