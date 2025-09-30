@@ -1,5 +1,7 @@
 package hscript;
 
+import haxe.ds.StringMap;
+import haxe.ds.Vector;
 import hscript.Ast.VariableInfo;
 import hscript.Ast.EImportMode;
 import haxe.ds.Either;
@@ -13,14 +15,14 @@ import hscript.Lexer.LConst;
 import hscript.Ast.ExprBinop;
 import haxe.Constraints.IMap;
 
-enum IStop {
+private enum IStop {
     ISBreak;
     ISContinue;
     ISReturn;
 }
 
 @:structInit
-class IVariableScopeChange {
+private class IVariableScopeChange {
     public var old:IVariableScopeChange;
 
     public var oldDeclared:Bool;
@@ -42,11 +44,24 @@ class Interp {
      * Scope changes will create variable changes that will be popped and reversed on the main array see changes array.
      * hopefully this is the right choice and doesn't give any headaches later :D -lunar
      */
-    private var variablesDeclared:Array<Bool> = [];
-    private var variablesValues:Array<Dynamic> = [];
+    private var variablesDeclared:Vector<Bool>;
+    private var variablesValues:Vector<Dynamic>;
 
-    private var variableNames:Array<String> = [];
-    private var changes:Array<IVariableScopeChange> = [];
+    /**
+     * Use variablesLookup.get(s) instead of variableNames.
+     * 
+     * If variableNames was a Array<String> it would be a linear scan across array.
+     * The variablesLookup map is generated in loadTables() function.
+     * 
+     * Linear scan Array: 2.359025s
+     * Linear scan Vector: 2.3816353s
+     * Array.indexOf: 2.0919545s
+     * Map lookup: 0.0215189000000002s
+     */
+    private var variableNames:Vector<String>;
+    private var variablesLookup:StringMap<Int>;
+
+    private var changes:Vector<IVariableScopeChange>;
 
     private var scope:Int = 0;
     private var inTry:Bool = false;
@@ -69,11 +84,11 @@ class Interp {
     }
 
     public function reset() {
-        this.variablesDeclared = [];
-        this.variablesValues = [];
+        this.variablesDeclared = null;
+        this.variablesValues = null;
 
-        this.variableNames = [];
-        this.changes = [];
+        this.variableNames = null;
+        this.changes = null;
 
         this.scope = 0;
         this.inTry = false;
@@ -81,10 +96,14 @@ class Interp {
     }
 
     private function loadTables(info:VariableInfo) {
-        variablesDeclared = cast new haxe.ds.Vector<Dynamic>(info.length);
-        variablesValues = cast new haxe.ds.Vector<Dynamic>(info.length);
+        variablesDeclared = new Vector<Bool>(info.length);
+        variablesValues = new Vector<Dynamic>(info.length);
 
-        variableNames = info.copy();
+        variableNames = Vector.fromArrayCopy(info);
+        variablesLookup = new StringMap<Int>();
+        for (i => name in info) variablesLookup.set(name, i);
+
+        changes = new Vector<IVariableScopeChange>(info.length);
     }
 
     private function interpExpr(expr:Expr):Dynamic {
@@ -200,7 +219,7 @@ class Interp {
             default: lastPathName;
         }
 
-        var variableID:VariableType = variableNames.indexOf(variableName);
+        var variableID:VariableType = variablesLookup.get(variableName);
         if (variableID != -1 && variablesDeclared[variableID])
             return variablesValues[variableID];
 
@@ -218,7 +237,7 @@ class Interp {
                 case Right(rawEnum): resolveEnum(rawEnum);
             }
 
-            variableID = variableNames.indexOf(variableName);
+            variableID = variablesLookup.get(variableName);
             if (variableID != -1) assign(variableID, value);
 
             return value;
@@ -516,12 +535,12 @@ class Interp {
 
     private inline function assign(name:VariableType, value:Dynamic) {
         if (scope > 0 && (changes[name] == null || changes[name].scope <= this.scope)) {
-            changes[name] = {
+            changes.set(name, {
                 old: changes[name],
                 oldDeclared: variablesDeclared[name],
                 oldValue: variablesValues[name],
                 scope: this.scope
-            };
+            });
         }
 
         variablesDeclared[name] = true;
