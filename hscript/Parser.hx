@@ -387,7 +387,7 @@ class Parser {
                 var expr:Expr = parseExpr();
                 create(EFunction(args, expr, variableID(functionName), publicModifier, staticModifier));
             case RETURN:
-                create(EReturn(maybe(LTSemiColon) ? null : parseExpr()));
+                create(EReturn(peekToken() == LTSemiColon ? null : parseExpr()));
             case NEW:
                 var className:String = parseClassName();
                 var args:Array<Expr> = parseParentheses();
@@ -517,7 +517,9 @@ class Parser {
                         case LTKeyWord(AS): 
                             var name:String = parseIdent();
                             mode = As(name);
-                        case LTSemiColon: break;
+                        case LTSemiColon: 
+                            reverseToken();
+                            break;
                         case LTDot: 
                             switch (readToken()) {
                                 case LTIdentifier(identifier): identifiers.push(identifier);

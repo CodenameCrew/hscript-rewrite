@@ -7,16 +7,28 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString("
-            // test /* */
-            /* aweseome */
-            object.value1 = 3; //test
-            object.value2;       
-        ");
+        var expr = parser.parseString('
+            //
+
+            importScript("data/global_collision");
+            importScript("data/global_overworld");
+            importScript("data/global_saves");
+            importScript("data/global_utils");
+            importScript("data/global_window");
+
+            import funkin.backend.utils.NativeAPI;
+            import funkin.backend.utils.WindowUtils;
+            import lime.graphics.Image;
+            import hxvlc.util.Handle;
+            import haxe.io.Path;
+
+            import Type;
+            import Sys;
+        ');
 
         var object = new Object();
         var interp = new Interp("Main.hx");
-        interp.variables.set("object", object);
+        interp.variables.set("importScript", (string:String) -> {});
         interp.execute(expr);
     }
 }
