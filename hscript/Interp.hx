@@ -141,7 +141,7 @@ class Interp {
                 for (expr in exprs)
                     value = interpExpr(expr);
                 value;
-            case EField(expr, field, isSafe): if (isSafe && field == null) null else getObjectField(interpExpr(expr), field);
+            case EField(expr, field, isSafe): if (isSafe && field == null) null else StaticInterp.getObjectField(interpExpr(expr), field);
             case EUnop(op, isPrefix, expr):
                 switch (op) {
                     case INC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line));
@@ -159,8 +159,8 @@ class Interp {
                             if (!isSafe) error(EInvalidAccess(field), expr.line);
                             else null;
                         }
-                        return callObjectField(object, getObjectField(object, field), argValues);
-                    default: return callObjectField(null, interpExpr(func), argValues);
+                        return StaticInterp.callObjectField(object, StaticInterp.getObjectField(object, field), argValues);
+                    default: return StaticInterp.callObjectField(null, interpExpr(func), argValues);
                 }
             case EIf(cond, thenExpr, elseExpr):
                 return if (interpExpr(cond) == true) 
@@ -179,13 +179,15 @@ class Interp {
                 var array:Dynamic = interpExpr(expr);
                 var index:Dynamic = interpExpr(index);
 
-                if (array is IMap) getMapValue(array, index);
+                if (array is IMap) StaticInterp.getMapValue(array, index);
                 else array[index];
             case ENew(className, args): interpNew(className, args);
             case EThrow(expr): throw interpExpr(expr);
             case EObject(fields):
+                if (fields == null || fields.length <= 0) return {};
+                
                 var object:Dynamic = {};
-                for (field in fields) setObjectField(object, field.name, interpExpr(field.expr));
+                for (field in fields) StaticInterp.setObjectField(object, field.name, interpExpr(field.expr));
                 object;
             case EForKeyValue(key, value, iterator, body): forKeyValueLoop(key, value, iterator, body); null;
             case EFor(varName, iterator, body): forLoop(varName, iterator, body); null;
@@ -236,18 +238,18 @@ class Interp {
         if (variableID != -1 && variablesDeclared[variableID])
             return variablesValues[variableID];
 
-        var testClass:Either<Class<Dynamic>, Enum<Dynamic>> = resolvePath(path);
+        var testClass:Either<Class<Dynamic>, Enum<Dynamic>> = StaticInterp.resolvePath(path);
         if (testClass == null) {
             var splitPathCopy:Array<String> = splitPathName.copy();
             splitPathCopy.pop();
 
-            testClass = resolvePath(splitPathCopy.join("."));
+            testClass = StaticInterp.resolvePath(splitPathCopy.join("."));
         }
 
         if (testClass != null) {
             var value:Dynamic = switch (testClass) {
                 case Left(resolvedClass): resolvedClass;
-                case Right(rawEnum): resolveEnum(rawEnum);
+                case Right(rawEnum): StaticInterp.resolveEnum(rawEnum);
             }
 
             variableID = variablesLookup.get(variableName);
@@ -500,14 +502,14 @@ class Interp {
             case EField(expr, field, isSafe):
                 var object:Dynamic = interpExpr(expr);
                 if (isSafe && object == null) return null;
-                setObjectField(object, field, assignValue);
+                StaticInterp.setObjectField(object, field, assignValue);
 
                 assignValue;
             case EArray(expr, index):
                 var array:Dynamic = interpExpr(expr);
                 var index:Dynamic = interpExpr(index);
 
-                if (array is IMap) setMapValue(array, index, assignValue);
+                if (array is IMap) StaticInterp.setMapValue(array, index, assignValue);
                 else array[index] = assignValue;
 
                 assignValue;
@@ -547,10 +549,10 @@ class Interp {
                     if (!isSafe) error(EInvalidAccess(field), expr.line);
                     else null;
                 } else {
-                    var fieldValue:Dynamic = getObjectField(object, field);
+                    var fieldValue:Dynamic = StaticInterp.getObjectField(object, field);
                     var assignValue:Dynamic = interpExpr(right);
 
-                    setObjectField(object, field, StaticInterp.evaluateBinop(op, fieldValue, assignValue));
+                    StaticInterp.setObjectField(object, field, StaticInterp.evaluateBinop(op, fieldValue, assignValue));
                 }
             case EArray(expr, index):
                 var array:Dynamic = interpExpr(expr);
@@ -558,8 +560,8 @@ class Interp {
 
                 var assignValue:Dynamic = null;
                 if (array is IMap) {
-                    assignValue = StaticInterp.evaluateBinop(op, getMapValue(array, index), interpExpr(right));
-                    setMapValue(array, index, assignValue);
+                    assignValue = StaticInterp.evaluateBinop(op, StaticInterp.getMapValue(array, index), interpExpr(right));
+                    StaticInterp.setMapValue(array, index, assignValue);
                 } else {
                     assignValue = StaticInterp.evaluateBinop(op, array[index], interpExpr(right));
                     array[index] = assignValue;
@@ -594,7 +596,8 @@ class Interp {
 
     private inline function scopeChanges() {
         for (name in 0...changes.length) {
-            var change:IVariableScopeChange = changes[name];
+            var change:IVariableScopeChange = changes.get(name);
+            if (change == null) continue;
             if (change.scope > this.scope) {
                 if (change.oldDeclared) {
                     variablesDeclared[name] = true;
@@ -632,54 +635,6 @@ class Interp {
         if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
         if (publicVariables != null && publicVariables.exists(varName)) return publicVariables.get(varName);
         return resolve(varName, line);
-    }
-
-    // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L646-L652
-	private inline function getMapValue(map:Dynamic, key:Dynamic):Dynamic {
-		return cast(map, IMap<Dynamic, Dynamic>).get(key);
-	}
-
-	private inline function setMapValue(map:Dynamic, key:Dynamic, value:Dynamic):Void {
-		cast(map, IMap<Dynamic, Dynamic>).set(key, value);
-	}
-
-    private function resolvePath(path:String):Either<Class<Dynamic>, Enum<Dynamic>> {
-        var resolvedClass:Class<Dynamic> = Type.resolveClass(path);
-        if (resolvedClass != null) return Left(resolvedClass);
-
-        var resolvedEnum:Enum<Dynamic> = Type.resolveEnum(path);
-        if (resolvedEnum != null) return Right(resolvedEnum);
-
-        return null;
-    }
-
-    private function resolveEnum(enums:Enum<Dynamic>):Dynamic {
-        var enumStorage:Dynamic = {};
-        for (name in enums.getConstructors()) {
-            try {
-                Reflect.setField(enumStorage, name, enums.createByName(name));
-            } catch (error:Dynamic) {
-                try {
-                    Reflect.setField(enumStorage, name, Reflect.makeVarArgs((args:Array<Dynamic>) -> enums.createByName(name, args)));
-                } catch (e:Dynamic) {
-                    throw error;
-                }
-            }
-        }
-        return enumStorage;
-    }
-
-    private inline function getObjectField(object:Dynamic, field:String) {
-        return Reflect.getProperty(object, field);
-    }
-
-    private inline function setObjectField(object:Dynamic, field:String, value:Dynamic) {
-        Reflect.setProperty(object, field, value);
-        return value;
-    }
-
-    private inline function callObjectField(object:Dynamic, field:Function, args:Array<Dynamic>) {
-        return Reflect.callMethod(object, field, args);
     }
 
     private inline function error(err:ErrorDef, line:Int):Dynamic {
@@ -741,5 +696,53 @@ class StaticInterp {
             case LCFloat(float): float;
             case LCString(string): string;
         }
+    }
+
+    // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L646-L652
+	public static inline function getMapValue(map:Dynamic, key:Dynamic):Dynamic {
+		return cast(map, IMap<Dynamic, Dynamic>).get(key);
+	}
+
+	public static inline function setMapValue(map:Dynamic, key:Dynamic, value:Dynamic):Void {
+		cast(map, IMap<Dynamic, Dynamic>).set(key, value);
+	}
+
+    public static function resolvePath(path:String):Either<Class<Dynamic>, Enum<Dynamic>> {
+        var resolvedClass:Class<Dynamic> = Type.resolveClass(path);
+        if (resolvedClass != null) return Left(resolvedClass);
+
+        var resolvedEnum:Enum<Dynamic> = Type.resolveEnum(path);
+        if (resolvedEnum != null) return Right(resolvedEnum);
+
+        return null;
+    }
+
+    public static function resolveEnum(enums:Enum<Dynamic>):Dynamic {
+        var enumStorage:Dynamic = {};
+        for (name in enums.getConstructors()) {
+            try {
+                Reflect.setField(enumStorage, name, enums.createByName(name));
+            } catch (error:Dynamic) {
+                try {
+                    Reflect.setField(enumStorage, name, Reflect.makeVarArgs((args:Array<Dynamic>) -> enums.createByName(name, args)));
+                } catch (e:Dynamic) {
+                    throw error;
+                }
+            }
+        }
+        return enumStorage;
+    }
+
+    public static inline function getObjectField(object:Dynamic, field:String) {
+        return Reflect.getProperty(object, field);
+    }
+
+    public static inline function setObjectField(object:Dynamic, field:String, value:Dynamic) {
+        Reflect.setProperty(object, field, value);
+        return value;
+    }
+
+    public static inline function callObjectField(object:Dynamic, field:Function, args:Array<Dynamic>) {
+        return Reflect.callMethod(object, field, args);
     }
 }

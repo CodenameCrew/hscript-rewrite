@@ -848,6 +848,8 @@ class Parser {
             switch (readToken()) {
                 case LTCloseCB: break;
                 case LTComma:
+                    if (readToken() == LTCloseCB) break;
+                    else reverseToken();
                 default: 
                     unexpected();
                     break;

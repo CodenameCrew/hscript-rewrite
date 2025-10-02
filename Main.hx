@@ -1,5 +1,6 @@
 package;
 
+import haxe.CallStack;
 import hscript.Interp;
 import hscript.Parser;
 
@@ -15,16 +16,19 @@ class Main {
             function fib(n) {
                 if (n <= 1) return n;
                 return fib(n - 1) + fib(n - 2);
-
-                #if !js
-                    #error
-                #end
             }
 
             fib(20);
+
+            var obj = {
+                tax: 2,
+                banna: 'yum',
+		    };
+            
+            obj;
         ");
 
         var interp = new Interp();
-        trace(interp.execute(expr), fib(20));
+            trace(interp.execute(expr), fib(20));
     }
 }
