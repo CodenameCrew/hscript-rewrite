@@ -293,6 +293,17 @@ class Lexer {
         return tokens;
     }
 
+    public function reset() {
+        this.character = 0;
+        this.charCode = -1;
+        this.tokenMin = 0;
+        this.tokenMax = 0;
+        this.line = 0;
+
+        this.input = null;
+        this.tokens.resize(0);
+    }
+
     private function token() {
 		tokenMin = (this.charCode < 0) ? this.character : this.character - 1;
 		var ltoken = nativeToken();

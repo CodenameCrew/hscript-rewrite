@@ -32,9 +32,21 @@ class Parser {
     
     public function new(?fileName:String) {
         this.fileName = fileName ?? "";
+        loadBaseVariables();
+    }
 
-        preprocesorValues.set("true", true);
-        preprocesorValues.set("false", false);
+    public function reset() {
+        tokens.resize(0);
+        token = 0;
+
+        variablesList.resize(0);
+        uniqueID = 0;
+
+        publicModifier = false;
+        staticModifier = false;
+
+        preprocesorValues.clear();
+        loadBaseVariables();
     }
 
     /**
@@ -63,6 +75,11 @@ class Parser {
             parseBlock(exprs);
         }
         return create(EInfo(variablesList, if (exprs.length == 1) exprs[0] else create(EBlock(exprs))));
+    }
+
+    private function loadBaseVariables() {
+        preprocesorValues.set("true", true);
+        preprocesorValues.set("false", false);
     }
 
     private function parseExpr():Expr {

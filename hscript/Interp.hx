@@ -110,6 +110,9 @@ class Interp implements IInterp {
         this.variablesLookup = null;
         this.changes = null;
 
+        this.variables.useDefaults = true;
+        this.variables.defaultsValues.clear();
+
         this.scope = 0;
         this.inTry = false;
         this.returnValue = null;
