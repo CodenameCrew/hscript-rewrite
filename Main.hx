@@ -1,33 +1,28 @@
 package;
 
+import hscript.Ast.IHScriptCustomBehaviour;
 import hscript.Interp;
 import hscript.Parser;
 
 class Main {
-    public static function fib(n) {
-        if (n <= 1) return n;
-        return fib(n - 1) + fib(n - 2);
-    }
-
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString("
-            function fib(n) {
-                if (n <= 1) return n;
-                return fib(n - 1) + fib(n - 2);
-            }
-
-            return fib(20);
-
-            var obj = {
-                tax: 2,
-                banna: 'yum',
-		    };
-            
-            obj;
+            object.value1 = 3;       
+            object.value2;       
         ");
 
+        var object = new Object();
         var interp = new Interp("Main.hx");
-        trace(interp.execute(expr), fib(20));
+        interp.variables.set("object", object);
+        interp.execute(expr);
     }
+}
+
+class Object implements IHScriptCustomBehaviour {
+    public var x:Float = 3;
+    public function new() {}
+
+    public function hset(name:String, value:Dynamic):Dynamic {trace(name, value); return name;};
+	public function hget(name:String):Dynamic {trace(name); return name;};
 }

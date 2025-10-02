@@ -14,12 +14,18 @@ import hscript.Ast.VariableType;
 import hscript.Lexer.LConst;
 import hscript.Ast.ExprBinop;
 import haxe.Constraints.IMap;
+import hscript.Ast.IHScriptCustomBehaviour;
 import haxe.PosInfos;
 
 private enum IStop {
     ISBreak;
     ISContinue;
     ISReturn;
+}
+
+private enum IScriptParentType {
+    ISObject;
+    ISNone;
 }
 
 @:structInit
@@ -73,9 +79,6 @@ class Interp implements IInterp {
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
 
-    public var variables:InterpLocals;
-    public var publicVariables:StringMap<Dynamic>;
-
     private var changes:Vector<IVariableScopeChange>;
 
     private var scope:Int = 0;
@@ -85,7 +88,42 @@ class Interp implements IInterp {
     public var fileName:String = null;
     public var lineNumber:Int = 0;
 
+    public var variables:InterpLocals;
+    public var publicVariables:StringMap<Dynamic>;
     public var errorHandler:Error->Void;
+
+    public var hasScriptParent:Bool = false;
+    public var scriptParent(default, set):Dynamic;
+    public var scriptParentType:IScriptParentType = ISNone;
+    public var scriptParentFields:StringMap<Bool>;
+
+    public function set_scriptParent(value:Dynamic):Dynamic {
+        if (value == null) {
+            scriptParentFields = null;
+            hasScriptParent = false;
+            scriptParentType = ISNone;
+            return scriptParent = null;
+        }
+
+        if (scriptParentFields == null)
+            scriptParentFields = new StringMap<Bool>();
+        scriptParentFields.clear();
+
+        hasScriptParent = true;
+        switch (Type.typeof(value)) {
+            case TClass(cls):
+                for (field in Type.getInstanceFields(cls)) scriptParentFields.set(field, true);
+                scriptParentType = ISObject;
+            case TObject:
+                for (field in Reflect.fields(value)) scriptParentFields.set(field, true);
+                scriptParentType = ISObject;
+            default:
+                hasScriptParent = false;
+                scriptParentType = ISNone;
+        }
+
+        return scriptParent = value;
+    }
 
     public function new(?fileName:String) {
         this.fileName = fileName ?? "";
@@ -174,7 +212,7 @@ class Interp implements IInterp {
                 switch (op) {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | 
                         SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN: assignExprOp(op, left, right);
-                    case EQ: assignExpr(left, right);
+                    case ASSIGN: assignExpr(left, right);
                     default: StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right));
                 }
             case EParent(expr): interpExpr(expr);
@@ -227,9 +265,10 @@ class Interp implements IInterp {
             case EThrow(expr): throw interpExpr(expr);
             case EObject(fields):
                 if (fields == null || fields.length <= 0) return {};
-                
                 var object:Dynamic = {};
-                for (field in fields) StaticInterp.setObjectField(object, field.name, interpExpr(field.expr));
+                for (field in fields) 
+                    Reflect.setField(object, field.name, interpExpr(field.expr));
+
                 object;
             case EForKeyValue(key, value, iterator, body): forKeyValueLoop(key, value, iterator, body); null;
             case EFor(varName, iterator, body): forLoop(varName, iterator, body); null;
@@ -560,7 +599,11 @@ class Interp implements IInterp {
     private inline function assignExpr(left:Expr, right:Expr):Dynamic {
         var assignValue:Dynamic = interpExpr(right);
         return switch (left.expr) {
-            case EIdent(name): assign(name, assignValue);
+            case EIdent(name): 
+                var varName:String = variableNames[name];
+                if (isScriptParentField(varName))
+                    return setScriptParentField(varName, assignValue);
+                assign(name, assignValue);
             case EField(expr, field, isSafe):
                 var object:Dynamic = interpExpr(expr);
                 if (isSafe && object == null) return null;
@@ -586,6 +629,14 @@ class Interp implements IInterp {
                     assign(name, StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right)));
                 else {
                     var varName:String = variableNames[name];
+
+                    if (isScriptParentField(varName)) {
+                        var value:Dynamic = getScriptParentField(varName);
+                        var newValue:Dynamic = StaticInterp.evaluateBinop(op, value, interpExpr(right));
+
+                        setScriptParentField(varName, newValue);
+                        return newValue;
+                    }
 
                     if (StaticInterp.staticVariables.exists(varName)) {
                         var value:Dynamic = StaticInterp.staticVariables.get(varName);
@@ -693,9 +744,28 @@ class Interp implements IInterp {
 
     private inline function resolveGlobal(ident:VariableType):Dynamic {
         var varName:String = variableNames[ident];
+        if (isScriptParentField(varName)) return getScriptParentField(varName);
         if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
         if (publicVariables != null && publicVariables.exists(varName)) return publicVariables.get(varName);
         return resolve(varName);
+    }
+
+    private inline function isScriptParentField(field:String):Bool {
+        return hasScriptParent && scriptParentFields.exists(field);
+    }
+    
+    private inline function getScriptParentField(field:String):Dynamic {
+        switch (scriptParentType) {
+            case ISObject: return StaticInterp.getObjectField(scriptParent, field);
+            case ISNone: return null;
+        }
+    }
+
+    private inline function setScriptParentField(field:String, value:Dynamic):Dynamic {
+        switch (scriptParentType) {
+            case ISObject: return StaticInterp.setObjectField(scriptParent, field, value);
+            case ISNone: return null;
+        }
     }
 
     private inline function error(err:ErrorDef, ?line:Int):Dynamic {
@@ -795,10 +865,20 @@ class StaticInterp {
     }
 
     public static inline function getObjectField(object:Dynamic, field:String) {
+        if (object is IHScriptCustomBehaviour) {
+            var behavior:IHScriptCustomBehaviour = cast object;
+            return behavior.hget(field);
+        }
+
         return Reflect.getProperty(object, field);
     }
 
     public static inline function setObjectField(object:Dynamic, field:String, value:Dynamic) {
+        if (object is IHScriptCustomBehaviour) {
+            var behavior:IHScriptCustomBehaviour = cast object;
+            return behavior.hset(field, value);
+        }
+
         Reflect.setProperty(object, field, value);
         return value;
     }

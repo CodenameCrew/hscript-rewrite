@@ -204,3 +204,8 @@ enum EImportMode {
 
 typedef VariableType = Null<Int>;
 typedef VariableInfo = Array<String>;
+
+interface IHScriptCustomBehaviour {
+	public function hset(name:String, value:Dynamic):Dynamic;
+	public function hget(name:String):Dynamic;
+}

@@ -661,8 +661,6 @@ class Parser {
                         reverseToken();
                         "Not implemented for current platform";
                 }
-            case LTIdentifier(identifier): identifier;
-            case LTKeyWord(keyword): cast keyword;
             default:
                 reverseToken();
                 "Not implemented for current platform";
