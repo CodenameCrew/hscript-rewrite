@@ -907,7 +907,6 @@ class InterpLocals {
 	public function loadDefaults() {
 		useDefaults = false;
 		for (key => value in defaultsValues) set(key, value);
-		defaultsValues.clear();
 	}
 	public var parent:IInterp;
 
