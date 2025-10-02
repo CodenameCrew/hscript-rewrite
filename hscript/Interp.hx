@@ -85,6 +85,8 @@ class Interp implements IInterp {
     public var fileName:String = null;
     public var lineNumber:Int = 0;
 
+    public var errorHandler:Error->Void;
+
     public function new(?fileName:String) {
         this.fileName = fileName ?? "";
         this.variables = new InterpLocals(this);
@@ -96,7 +98,7 @@ class Interp implements IInterp {
                 loadTables(info);
                 loadBaseVariables();
 
-                return interpReturnExpr(expr);
+                return safeInterpReturnExpr(expr);
             default:
                 throw error(ECustom("Missing EInfo()"), expr.line);
         }
@@ -247,7 +249,7 @@ class Interp implements IInterp {
         }
     }
 
-    private function interpReturnExpr(expr:Expr):Dynamic {
+    private inline function interpReturnExpr(expr:Expr):Dynamic {
         try {
             return interpExpr(expr);
         } catch (stop:IStop) {
@@ -259,7 +261,27 @@ class Interp implements IInterp {
                     returnValue = null;
                     return value;
             }
+        } catch (e) {
+            error(ECustom(e.toString()));
+            return null;
         }
+    }
+
+    /**
+     * Catch errors that are not raised by the script, but are raised by the Interp.
+     */
+    private function safeInterpReturnExpr(expr:Expr):Dynamic {
+        try {
+            return interpReturnExpr(expr);
+        } catch (e:Error) {
+            Sys.println(haxe.CallStack.toString(haxe.CallStack.exceptionStack()));
+			if (errorHandler != null) errorHandler(e);
+			else throw e;
+			return null;
+        } catch (e) {
+            trace(e);
+        }
+        return null;
     }
 
     private inline function interpImport(path:String, mode:EImportMode):Dynamic {
