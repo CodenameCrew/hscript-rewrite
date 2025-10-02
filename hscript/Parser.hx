@@ -583,6 +583,7 @@ class Parser {
                 parsePreprocessBlock(exprs, parsePreprocessCond());
                 return create(EBlock(exprs));
             case "else" | "elseif" | "end": error(EInvalidPreprocessor("Invalid #" + id));
+            case "error": error(ECustom(getPreprocessError()));
             default: error(EInvalidPreprocessor("Unknown preprocessor #" + id));
         }
         return null;
@@ -629,6 +630,26 @@ class Parser {
         variablesList.resize(oldVariablesListSize);
 
         return evaluation;
+    }
+
+    private function getPreprocessError():String {
+        var oldVariablesListSize:Int = variablesList.length;
+        variablesList.resize(oldVariablesListSize);
+
+        return switch (readToken()) {
+            case LTConst(const):
+                switch (const) {
+                    case LCString(string): string;
+                    default:
+                        reverseToken();
+                        "Not implemented for current platform";
+                }
+            case LTIdentifier(identifier): identifier;
+            case LTKeyWord(keyword): cast keyword;
+            default:
+                reverseToken();
+                "Not implemented for current platform";
+        };
     }
 
     /**

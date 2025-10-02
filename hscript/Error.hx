@@ -29,7 +29,7 @@ class Error {
 			case EInvalidClass(className): "Type not found " + className;
 			case ECustom(msg): msg;
 		};
-		return (this.origin != null ? (this.origin + ":") : "") + this.line + ": " + message;
+		return (this.origin != null && this.origin != "" ? (this.origin + ":") : "") + this.line + ": " + message;
 	}
 }
 
