@@ -486,11 +486,11 @@ class Lexer {
                             }
                             var preop:String = op;
                             op += String.fromCharCode(charCode);
-                            
-                            if (!LexerOp.ALL_LOPS_LOOKUP.exists(op) && LexerOp.ALL_LOPS_LOOKUP.exists(preop)) {
-                                if (op == COMMENT || op == COMMENT_OPEN)
-                                    return comment(op, charCode);
 
+                            if (op == COMMENT || op == COMMENT_OPEN)
+                                return comment(op, charCode);
+                            
+                            if (!LexerOp.ALL_LOPS_LOOKUP.exists(op)) {
                                 this.charCode = charCode;
                                 return LTOp(preop);
                             }

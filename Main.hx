@@ -8,7 +8,9 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString("
-            object.value1 = 3;       
+            // test /* */
+            /* aweseome */
+            object.value1 = 3; //test
             object.value2;       
         ");
 
