@@ -1,6 +1,5 @@
 package;
 
-import haxe.CallStack;
 import hscript.Interp;
 import hscript.Parser;
 
@@ -18,7 +17,7 @@ class Main {
                 return fib(n - 1) + fib(n - 2);
             }
 
-            fib(20);
+            return fib(20);
 
             var obj = {
                 tax: 2,
@@ -29,6 +28,6 @@ class Main {
         ");
 
         var interp = new Interp();
-            trace(interp.execute(expr), fib(20));
+        trace(interp.execute(expr), fib(20));
     }
 }

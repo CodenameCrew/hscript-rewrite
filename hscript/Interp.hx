@@ -597,8 +597,7 @@ class Interp {
     private inline function scopeChanges() {
         for (name in 0...changes.length) {
             var change:IVariableScopeChange = changes.get(name);
-            if (change == null) continue;
-            if (change.scope > this.scope) {
+            if (change != null && change.scope > this.scope) {
                 if (change.oldDeclared) {
                     variablesDeclared[name] = true;
                     variablesValues[name] = change.oldValue;
