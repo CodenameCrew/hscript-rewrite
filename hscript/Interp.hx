@@ -62,7 +62,6 @@ class Interp {
     private var variablesLookup:StringMap<Int>;
 
     public var publicVariables:StringMap<Dynamic>;
-	public static var staticVariables:StringMap<Dynamic> = new StringMap<Dynamic>();
 
     private var changes:Vector<IVariableScopeChange>;
 
@@ -114,9 +113,19 @@ class Interp {
         return switch (expr.expr) {
             case EMeta(name, args, expr): interpExpr(expr);
             case EConst(const): StaticInterp.evaluateConst(const);
-            case EIdent(name): 
-                if (variablesDeclared[name]) variablesValues[name] else resolve(name);
+            case EIdent(name): if (variablesDeclared[name]) variablesValues[name]; else resolveGlobal(name);
             case EVar(name, init, isPublic, isStatic):
+                if (scope == 0) {
+                    var varName:String = variableNames[name];
+                    if (isStatic && !StaticInterp.staticVariables.exists(varName)) {
+                        StaticInterp.staticVariables.set(varName, interpExpr(init));
+                        return null;
+                    }
+                    if (isPublic && publicVariables != null) {
+                        publicVariables.set(variableNames[name], interpExpr(init));
+                        return null;
+                    }
+                }
                 assign(name, init == null ? null : interpExpr(init));
                 return null;
             case EBinop(op, left, right): 
@@ -452,7 +461,7 @@ class Interp {
 
     private inline function interpNew(className:VariableType, args:Array<Dynamic>):Dynamic {
         var classType = Type.resolveClass(variableNames[className]);
-        if (classType == null) classType = resolve(className);
+        if (classType == null) classType = resolveGlobal(className);
         return Type.createInstance(classType, args);
     }
 
@@ -508,7 +517,30 @@ class Interp {
 
     private inline function assignExprOp(op:ExprBinop, left:Expr, right:Expr):Dynamic {
         return switch (left.expr) {
-            case EIdent(name): assign(name, StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right)));
+            case EIdent(name): 
+                if (variablesDeclared[name])
+                    assign(name, StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right)));
+                else {
+                    var varName:String = variableNames[name];
+
+                    if (StaticInterp.staticVariables.exists(varName)) {
+                        var value:Dynamic = StaticInterp.staticVariables.get(varName);
+                        var newValue:Dynamic = StaticInterp.evaluateBinop(op, value, interpExpr(right));
+
+                        StaticInterp.staticVariables.set(varName, newValue);
+                        return newValue;
+                    }
+                    
+                    if (publicVariables != null && publicVariables.exists(varName)) {
+                        var value:Dynamic = publicVariables.get(varName);
+                        var newValue:Dynamic = StaticInterp.evaluateBinop(op, value, interpExpr(right));
+
+                        publicVariables.set(varName, newValue);
+                        return newValue;
+                    }
+
+                    error(EUnknownVariable(varName), left.line);
+                }
             case EField(expr, field, isSafe):
                 var object:Dynamic = interpExpr(expr);
                 if (object == null) {
@@ -577,8 +609,29 @@ class Interp {
         }
     }
 
-    private inline function resolve(ident:VariableType):Dynamic {
-        return null;
+    /**
+     * !!!USE THIS FUNCTION TO FIND THINGS THAT ARE NOT DEFINED BY SCRIPT!!!
+     * Idents go to the resolve function when they aren't defined in the local scope of the program.
+     * 
+     * For example:
+     * public var x:Float = 1;
+     * static var y:Float = 3;
+     * var z:Float = 3;
+     * 
+     * trace(x); calls resolve, not local
+     * trace(y); calls resolve, not local
+     * 
+     * trace(z); does not call resolve, local
+     */
+    private inline function resolve(varName:String, ?line:Int):Dynamic {
+        error(EUnknownVariable(varName), line);
+    }
+
+    private inline function resolveGlobal(ident:VariableType, ?line:Int):Dynamic {
+        var varName:String = variableNames[ident];
+        if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
+        if (publicVariables != null && publicVariables.exists(varName)) return publicVariables.get(varName);
+        return resolve(varName, line);
     }
 
     // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L646-L652
@@ -636,6 +689,8 @@ class Interp {
 }
 
 class StaticInterp {
+	public static var staticVariables:StringMap<Dynamic> = new StringMap<Dynamic>();
+    
     public static inline function evaluateBinop(op:ExprBinop, val1 :Dynamic, val2:Dynamic):Dynamic {
         switch (op) {
             case ADD: return val1 + val2;
