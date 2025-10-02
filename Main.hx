@@ -27,7 +27,7 @@ class Main {
             obj;
         ");
 
-        var interp = new Interp();
+        var interp = new Interp("Main.hx");
         trace(interp.execute(expr), fib(20));
     }
 }

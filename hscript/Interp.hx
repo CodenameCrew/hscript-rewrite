@@ -14,6 +14,7 @@ import hscript.Ast.VariableType;
 import hscript.Lexer.LConst;
 import hscript.Ast.ExprBinop;
 import haxe.Constraints.IMap;
+import haxe.PosInfos;
 
 private enum IStop {
     ISBreak;
@@ -30,7 +31,18 @@ private class IVariableScopeChange {
     public var scope:Int;
 }
 
-class Interp {
+@:allow(hscript)
+interface IInterp {
+    private var variablesDeclared:Vector<Bool>;
+    private var variablesValues:Vector<Dynamic>;
+
+    private var variableNames:Vector<String>;
+    private var variablesLookup:StringMap<Int>;
+
+    private function assign(name:VariableType, value:Dynamic):Dynamic;
+}
+
+class Interp implements IInterp {
     /**
      * Our variables used no matter what scope, fastest by far winner when it comes to raw reading and writing.
      * 
@@ -61,6 +73,7 @@ class Interp {
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
 
+    public var variables:InterpLocals;
     public var publicVariables:StringMap<Dynamic>;
 
     private var changes:Vector<IVariableScopeChange>;
@@ -69,16 +82,20 @@ class Interp {
     private var inTry:Bool = false;
     private var returnValue:Dynamic = null;
 
-    public var origin:String = null;
+    public var fileName:String = null;
+    public var lineNumber:Int = 0;
 
-    public function new(?origin:String) {
-        this.origin = origin ?? "";
+    public function new(?fileName:String) {
+        this.fileName = fileName ?? "";
+        this.variables = new InterpLocals(this);
     }
 
     public function execute(expr:Expr):Dynamic {
         switch (expr.expr) {
             case EInfo(info, expr):
                 loadTables(info);
+                loadBaseVariables();
+
                 return interpReturnExpr(expr);
             default:
                 throw error(ECustom("Missing EInfo()"), expr.line);
@@ -109,7 +126,27 @@ class Interp {
         changes = new Vector<IVariableScopeChange>(info.length);
     }
 
+    private function loadBaseVariables() {
+        variables.set("null", null);
+        variables.set("true", true);
+        variables.set("false", false);
+        variables.set("trace", Reflect.makeVarArgs(function (vals:Array<Dynamic>) {
+            var info:PosInfos = cast {
+                lineNumber: this.lineNumber,
+                fileName: this.fileName,
+            };
+            var value:Dynamic = vals.shift();
+			if (vals.length > 0) info.customParams = vals;
+			haxe.Log.trace(Std.string(value), info);
+        }));
+
+        variables.loadDefaults();
+    }
+
     private function interpExpr(expr:Expr):Dynamic {
+        if (expr == null) return null;
+
+        this.lineNumber = expr.line;
         return switch (expr.expr) {
             case EMeta(name, args, expr): interpExpr(expr);
             case EConst(const): StaticInterp.evaluateConst(const);
@@ -305,7 +342,7 @@ class Interp {
             } else {
                 ret = interpReturnExpr(body);
             }
-            
+
             decreaseScope();
             return ret;
         }
@@ -454,7 +491,7 @@ class Interp {
             for (value in switchCase.values)
                 if (interpExpr(value) == switchValue) {foundMatch = true; break;}
 
-            if (foundMatch) switchValue = interpExpr(switchCase.expr);
+            if (foundMatch && switchCase.expr != null) switchValue = interpExpr(switchCase.expr);
         }
 
         if (!foundMatch) switchValue = defaultExpr != null ? interpExpr(defaultExpr) : null;
@@ -571,7 +608,7 @@ class Interp {
         }
     }
 
-    private inline function assign(name:VariableType, value:Dynamic) {
+    private inline function assign(name:VariableType, value:Dynamic):Dynamic {
         if (scope > 0 && (changes[name] == null || changes[name].scope <= this.scope)) {
             changes.set(name, {
                 old: changes[name],
@@ -625,19 +662,19 @@ class Interp {
      * 
      * trace(z); does not call resolve, local
      */
-    private inline function resolve(varName:String, ?line:Int):Dynamic {
-        error(EUnknownVariable(varName), line);
+    private inline function resolve(varName:String):Dynamic {
+        error(EUnknownVariable(varName), this.lineNumber);
     }
 
-    private inline function resolveGlobal(ident:VariableType, ?line:Int):Dynamic {
+    private inline function resolveGlobal(ident:VariableType):Dynamic {
         var varName:String = variableNames[ident];
         if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
         if (publicVariables != null && publicVariables.exists(varName)) return publicVariables.get(varName);
-        return resolve(varName, line);
+        return resolve(varName);
     }
 
-    private inline function error(err:ErrorDef, line:Int):Dynamic {
-		throw new Error(err, null, null, origin, line);
+    private inline function error(err:ErrorDef, ?line:Int):Dynamic {
+		throw new Error(err, null, null, this.fileName, line ?? this.lineNumber);
         return null;
 	}
 }
@@ -744,4 +781,56 @@ class StaticInterp {
     public static inline function callObjectField(object:Dynamic, field:Function, args:Array<Dynamic>) {
         return Reflect.callMethod(object, field, args);
     }
+}
+
+/**
+ * Interface to set locals inside a interp. See resolve() function to see what counts as local.
+ */
+class InterpLocals {
+    /**
+     * Defaults are used to load variables before the interps variable vectors have loaded
+     * 
+     * For example:
+     * interp.variables.set("input", 123);
+     * interp.execute(expr);
+     * 
+     * without loadDefaults() the interp wouldn't know where to bind the input.
+     */
+    public var defaultsValues:Map<String, Dynamic> = [];
+	public var useDefaults:Bool = true;
+
+	public function loadDefaults() {
+		useDefaults = false;
+		for (key => value in defaultsValues) set(key, value);
+		defaultsValues.clear();
+	}
+	public var parent:IInterp;
+
+	public function new(parent:IInterp)
+		this.parent = parent;
+
+	public inline function set(key:String, value:Dynamic) {
+        if (useDefaults) {
+            defaultsValues.set(key, value);
+        } else {
+		    if (parent.variablesLookup.exists(key)) 
+                parent.assign(parent.variablesLookup.get(key), value);
+        }
+	}
+
+	public inline function get(key:String):Dynamic {
+        if (useDefaults) {
+            return defaultsValues.get(key);
+        } else {
+		    if (parent.variablesLookup.exists(key)) {
+                var varID:Int = parent.variablesLookup.get(key);
+                return parent.variablesDeclared[varID] ? parent.variablesValues[varID] : null; 
+            } else 
+                return null;
+        }
+	}
+
+	public inline function exists(key:String):Bool {
+		return parent.variablesLookup.get(key) != null;
+	}
 }

@@ -27,11 +27,11 @@ class Parser {
     private var publicModifier:Bool = false;
     private var staticModifier:Bool = false;
 
-    public var origin:String = null;
+    public var fileName:String = null;
     public var preprocesorValues:StringMap<Dynamic> = new StringMap<Dynamic>();
     
-    public function new(?origin:String) {
-        this.origin = origin ?? "";
+    public function new(?fileName:String) {
+        this.fileName = fileName ?? "";
 
         preprocesorValues.set("true", true);
         preprocesorValues.set("false", false);
@@ -963,6 +963,6 @@ class Parser {
 
     private function error(err:ErrorDef) {
         var currentToken:LTokenPos = readPosition();
-		throw new Error(err, currentToken.min, currentToken.max, origin, currentToken.line);
+		throw new Error(err, currentToken.min, currentToken.max, fileName, currentToken.line);
 	}
 }

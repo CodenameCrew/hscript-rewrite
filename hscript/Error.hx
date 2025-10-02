@@ -4,14 +4,14 @@ class Error {
 	public var e:ErrorDef;
 	public var min:Int;
 	public var max:Int;
-	public var origin:String;
+	public var fileName:String;
 	public var line:Int;
 
-	public function new(e:ErrorDef, ?min:Int, ?max:Int, ?origin:String, ?line:Int) {
+	public function new(e:ErrorDef, ?min:Int, ?max:Int, ?fileName:String, ?line:Int) {
 		this.e = e;
 		this.min = min;
 		this.max = max;
-		this.origin = origin;
+		this.fileName = fileName;
 		this.line = line;
 	}
 
@@ -29,7 +29,7 @@ class Error {
 			case EInvalidClass(className): "Type not found " + className;
 			case ECustom(msg): msg;
 		};
-		return (this.origin != null && this.origin != "" ? (this.origin + ":") : "") + this.line + ": " + message;
+		return (this.fileName != null && this.fileName != "" ? (this.fileName + ":") : "") + this.line + ": " + message;
 	}
 }
 

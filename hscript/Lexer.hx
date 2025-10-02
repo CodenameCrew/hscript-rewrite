@@ -274,10 +274,10 @@ class Lexer {
     private var input:String = null;
     private var tokens:Array<LTokenPos> = [];
 
-    public var origin:String = null;
+    public var fileName:String = null;
 
-    public function new(?origin:String) {
-        this.origin = origin ?? "";
+    public function new(?fileName:String) {
+        this.fileName = fileName ?? "";
     }
 
     public function create(string:String):Array<LTokenPos> {
@@ -625,7 +625,7 @@ class Lexer {
     }
 
     private inline function error(err:ErrorDef, pmin:Int, pmax:Int) {
-		throw new Error(err, pmin, pmax, origin, line);
+		throw new Error(err, pmin, pmax, fileName, line);
 	}
 
     /**
