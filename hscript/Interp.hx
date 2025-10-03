@@ -950,6 +950,6 @@ class InterpLocals {
 	}
 
 	public inline function exists(key:String):Bool {
-		return parent.variablesLookup.get(key) != null;
+		return parent.variablesLookup.exists(key) && parent.variablesDeclared[parent.variablesLookup.get(key)];
 	}
 }

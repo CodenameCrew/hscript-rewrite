@@ -19,7 +19,8 @@ class Main {
 
         var object = new Object();
         var interp = new Interp("Main.hx");
-        interp.variables.set("importScript", (string:String) -> {});
+        interp.variables.set("MusicBeatState", {skipTransIn: false, skipTransOut:false});
+        interp.variables.set("FlxG", {camera: {flash: (int:Int, time:Float) -> {trace(int);}}});
         trace(interp.execute(expr));
     }
 }
