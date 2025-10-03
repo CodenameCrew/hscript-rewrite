@@ -612,7 +612,7 @@ class Interp implements IInterp {
     }
 
     private inline function assignExpr(left:Expr, right:Expr):Dynamic {
-        trace(left,right);
+        trace(left.expr,right.expr);
         var assignValue:Dynamic = interpExpr(right);
         return switch (left.expr) {
             case EIdent(name): 
