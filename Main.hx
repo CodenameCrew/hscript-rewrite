@@ -8,13 +8,16 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-
+            var something = 3 == 3;
+            if (!something)
+                return "banna";
+            return 41;
         ');
 
         var object = new Object();
         var interp = new Interp("Main.hx");
         interp.variables.set("importScript", (string:String) -> {});
-        interp.execute(expr);
+        trace(interp.execute(expr));
     }
 }
 

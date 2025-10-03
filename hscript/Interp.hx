@@ -226,7 +226,7 @@ class Interp implements IInterp {
                 switch (op) {
                     case INC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line));
                     case DEC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(-1)), expr.line));
-                    case NOT: interpExpr(expr) != null;
+                    case NOT: interpExpr(expr) == false;
                     case NEG: -interpExpr(expr);
                     case NEG_BIT: ~interpExpr(expr);
                 }
