@@ -369,7 +369,7 @@ class Interp implements IInterp {
 
         var reflectiveFunction:Dynamic = null;
         var interpFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
-            if ((inputArgs == null ? 0 : inputArgs.length) != argsNeeded) {
+            if ((inputArgs == null ? 0 : inputArgs.length) < argsNeeded) {
                 error(ECustom(
                     "Invalid number of parameters. Got " + inputArgs.length + ", required " + argsNeeded +
                     (name != null ? " for function '" + variableNames[name] + "'" : "")
