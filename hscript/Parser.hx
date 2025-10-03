@@ -449,7 +449,7 @@ class Parser {
                             }
                             switchCase.expr = getSwitchExprs();
                         case LTKeyWord(DEFAULT):
-                            if (expr != null) unexpected();
+                            if (defaultExpr != null) unexpected();
                             ensure(LTColon);
                             
                             var exprs:Array<Expr> = [];

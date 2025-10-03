@@ -8,10 +8,19 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            if (pixelPerfect)
-                FlxG.cameras.cameraAdded.add(__onCameraAdd);
-            else
-                FlxG.cameras.cameraAdded.remove(__onCameraAdd);
+        function unserialize():Dynamic {
+            switch (get(pos++)) {
+                case 107:
+                    return Math.NaN;
+                case 109:
+                    return Math.NEGATIVE_INFINITY;
+                case 112:
+                    return Math.POSITIVE_INFINITY;
+                default:
+            }
+            pos--;
+            throw "Invalid char " + fastCharAt(buf, pos) + " at position " + pos;
+        }
         ');
 
         var object = new Object();
