@@ -611,10 +611,10 @@ class Interp implements IInterp {
         return map;
     }
 
-    private inline function assignExpr(left:Expr, right:Expr):Dynamic {
+    private function assignExpr(left:Expr, right:Expr):Dynamic {
         trace(left.expr,right.expr);
         var assignValue:Dynamic = interpExpr(right);
-        return switch (left.expr) {
+        switch (left.expr) {
             case EIdent(name): 
                 var varName:String = variableNames[name];
                 if (isScriptParentField(varName))
@@ -625,51 +625,51 @@ class Interp implements IInterp {
                 if (isSafe && object == null) return null;
                 StaticInterp.setObjectField(object, field, assignValue);
 
-                assignValue;
             case EArray(expr, index):
                 var array:Dynamic = interpExpr(expr);
                 var index:Dynamic = interpExpr(index);
 
                 if (array is IMap) StaticInterp.setMapValue(array, index, assignValue);
                 else array[index] = assignValue;
-
-                assignValue;
             default: 
                 trace("assingExpr");
                 error(EInvalidOp(EQ), left.line);
         }
+
+        return assignValue;
     }
 
-    private inline function assignExprOp(op:ExprBinop, left:Expr, right:Expr):Dynamic {
-        return switch (left.expr) {
+    private function assignExprOp(op:ExprBinop, left:Expr, right:Expr):Dynamic {
+        var assignValue:Dynamic = interpExpr(right);
+        switch (left.expr) {
             case EIdent(name): 
                 if (variablesDeclared[name])
-                    assign(name, StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right)));
+                    assign(name, StaticInterp.evaluateBinop(op, interpExpr(left), assignValue));
                 else {
                     var varName:String = variableNames[name];
 
                     if (isScriptParentField(varName)) {
                         var value:Dynamic = getScriptParentField(varName);
-                        var newValue:Dynamic = StaticInterp.evaluateBinop(op, value, interpExpr(right));
+                        assignValue = StaticInterp.evaluateBinop(op, value, assignValue);
 
-                        setScriptParentField(varName, newValue);
-                        return newValue;
+                        setScriptParentField(varName, assignValue);
+                        return assignValue;
                     }
 
                     if (StaticInterp.staticVariables.exists(varName)) {
                         var value:Dynamic = StaticInterp.staticVariables.get(varName);
-                        var newValue:Dynamic = StaticInterp.evaluateBinop(op, value, interpExpr(right));
+                        assignValue = StaticInterp.evaluateBinop(op, value, assignValue);
 
-                        StaticInterp.staticVariables.set(varName, newValue);
-                        return newValue;
+                        StaticInterp.staticVariables.set(varName, assignValue);
+                        return assignValue;
                     }
                     
                     if (publicVariables != null && publicVariables.exists(varName)) {
                         var value:Dynamic = publicVariables.get(varName);
-                        var newValue:Dynamic = StaticInterp.evaluateBinop(op, value, interpExpr(right));
+                        assignValue = StaticInterp.evaluateBinop(op, value, assignValue);
 
-                        publicVariables.set(varName, newValue);
-                        return newValue;
+                        publicVariables.set(varName, assignValue);
+                        return assignValue;
                     }
 
                     error(EUnknownVariable(varName), left.line);
@@ -681,7 +681,7 @@ class Interp implements IInterp {
                     else null;
                 } else {
                     var fieldValue:Dynamic = StaticInterp.getObjectField(object, field);
-                    var assignValue:Dynamic =  StaticInterp.evaluateBinop(op, fieldValue, interpExpr(right));
+                    assignValue = StaticInterp.evaluateBinop(op, fieldValue, assignValue);
 
                     StaticInterp.setObjectField(object, field, assignValue);
                 }
@@ -689,17 +689,18 @@ class Interp implements IInterp {
                 var array:Dynamic = interpExpr(expr);
                 var index:Dynamic = interpExpr(index);
 
-                var assignValue:Dynamic = null;
                 if (array is IMap) {
-                    assignValue = StaticInterp.evaluateBinop(op, StaticInterp.getMapValue(array, index), interpExpr(right));
+                    assignValue = StaticInterp.evaluateBinop(op, StaticInterp.getMapValue(array, index), assignValue);
                     StaticInterp.setMapValue(array, index, assignValue);
                 } else {
-                    assignValue = StaticInterp.evaluateBinop(op, array[index], interpExpr(right));
+                    assignValue = StaticInterp.evaluateBinop(op, array[index], assignValue);
                     array[index] = assignValue;
                 }
-                assignValue;
-            default: error(EInvalidOp(op), left.line);
+            default: 
+                error(EInvalidOp(op), left.line);
         }
+
+        return assignValue;
     }
 
     private inline function assign(name:VariableType, value:Dynamic):Dynamic {
