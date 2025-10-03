@@ -226,7 +226,7 @@ class Interp implements IInterp {
                 switch (op) {
                     case INC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line));
                     case DEC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(-1)), expr.line));
-                    case NOT: interpExpr(expr) == false;
+                    case NOT: !interpExpr(expr);
                     case NEG: -interpExpr(expr);
                     case NEG_BIT: ~interpExpr(expr);
                 }
@@ -413,7 +413,20 @@ class Interp implements IInterp {
         }
 
         reflectiveFunction = Reflect.makeVarArgs(interpFunction);
-        if (name != null) assign(name, reflectiveFunction);
+        if (name != null) {
+            if (scope == 0) {
+                var varName:String = variableNames[name];
+                if (isStatic && !StaticInterp.staticVariables.exists(varName)) {
+                    StaticInterp.staticVariables.set(varName, reflectiveFunction);
+                    return reflectiveFunction;
+                }
+                if (isPublic && publicVariables != null) {
+                    publicVariables.set(variableNames[name], reflectiveFunction);
+                    return reflectiveFunction;
+                }
+            }
+            assign(name, reflectiveFunction);
+        }
         return reflectiveFunction;
     }
 

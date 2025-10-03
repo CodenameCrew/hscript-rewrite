@@ -8,10 +8,9 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            var something = 3 == 3;
-            if (!something)
-                return "banna";
-            return 41;
+            var something = 3;
+            --something;
+            return something;
         ');
 
         var object = new Object();
