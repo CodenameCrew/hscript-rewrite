@@ -8,22 +8,8 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            //
-
-            importScript("data/global_collision");
-            importScript("data/global_overworld");
-            importScript("data/global_saves");
-            importScript("data/global_utils");
-            importScript("data/global_window");
-
-            import funkin.backend.utils.NativeAPI;
-            import funkin.backend.utils.WindowUtils;
-            import lime.graphics.Image;
-            import hxvlc.util.Handle;
-            import haxe.io.Path;
-
-            import Type;
-            import Sys;
+            function test(d) {}
+            test(-3);
         ');
 
         var object = new Object();

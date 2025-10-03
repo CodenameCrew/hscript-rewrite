@@ -376,6 +376,7 @@ class Parser {
             case FUNCTION:
                 var functionName:String = switch (readToken()) {
                     case LTIdentifier(identifier): identifier;
+                    case LTKeyWord(keyword): cast keyword;
                     default: reverseToken(); null;
                 };
 

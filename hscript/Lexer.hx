@@ -115,7 +115,7 @@ enum abstract LexerOp(String) from String to String {
 
     // Not used that much so no need for hashmap (hash map wouldn't make a difference, array has 4 elements)
     public static final ALL_LUNOPS:Array<LexerOp> = [
-        NOT, NOT_BITWISE, INCREMENT, DECREMENT,
+        SUB, NOT, NOT_BITWISE, INCREMENT, DECREMENT,
     ];
 
     /**
