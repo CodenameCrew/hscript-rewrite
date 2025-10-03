@@ -8,9 +8,13 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            var something = 3;
-            --something;
-            return something;
+
+        var newWarningFont:FlxText = null;
+        function postCreate() {
+
+            FlxG.camera.flash(0xFF000000, .3);
+            MusicBeatState.skipTransIn = MusicBeatState.skipTransOut = true;
+        }
         ');
 
         var object = new Object();

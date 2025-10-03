@@ -631,7 +631,7 @@ class Lexer {
     }
 
     private inline function error(err:ErrorDef, pmin:Int, pmax:Int) {
-		throw new Error(err, pmin, pmax, fileName, line);
+		throw new Error(err, pmin, pmax, fileName, line+1);
 	}
 
     /**

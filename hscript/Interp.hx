@@ -784,7 +784,7 @@ class Interp implements IInterp {
     }
 
     private inline function error(err:ErrorDef, ?line:Int):Dynamic {
-		throw new Error(err, null, null, this.fileName, line ?? this.lineNumber);
+		throw new Error(err, null, null, this.fileName, line ?? this.lineNumber+1);
         return null;
 	}
 }
