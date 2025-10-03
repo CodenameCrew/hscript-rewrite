@@ -612,6 +612,7 @@ class Interp implements IInterp {
     }
 
     private inline function assignExpr(left:Expr, right:Expr):Dynamic {
+        trace(left,right);
         var assignValue:Dynamic = interpExpr(right);
         return switch (left.expr) {
             case EIdent(name): 
@@ -633,7 +634,9 @@ class Interp implements IInterp {
                 else array[index] = assignValue;
 
                 assignValue;
-            default: error(EInvalidOp(EQ), left.line);
+            default: 
+                trace("assingExpr");
+                error(EInvalidOp(EQ), left.line);
         }
     }
 
@@ -678,9 +681,9 @@ class Interp implements IInterp {
                     else null;
                 } else {
                     var fieldValue:Dynamic = StaticInterp.getObjectField(object, field);
-                    var assignValue:Dynamic = interpExpr(right);
+                    var assignValue:Dynamic =  StaticInterp.evaluateBinop(op, fieldValue, interpExpr(right));
 
-                    StaticInterp.setObjectField(object, field, StaticInterp.evaluateBinop(op, fieldValue, assignValue));
+                    StaticInterp.setObjectField(object, field, assignValue);
                 }
             case EArray(expr, index):
                 var array:Dynamic = interpExpr(expr);
@@ -832,7 +835,7 @@ class StaticInterp {
             case IS: return Std.isOfType(val1 , val2);
             case NCOAL: return val1 ?? val2;
 
-            default: throw new Error(EInvalidOp("Invalid operator: " + op));
+            default: throw new Error(EInvalidOp(op));
         }
     }
 
