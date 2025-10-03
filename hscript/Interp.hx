@@ -353,7 +353,6 @@ class Interp implements IInterp {
                 case Left(resolvedClass): resolvedClass;
                 case Right(rawEnum): StaticInterp.resolveEnum(rawEnum);
             }
-            trace(variableName,path,value);
 
             if (variablesLookup.exists(variableName)) 
                 assign(variablesLookup.get(variableName), value);
@@ -565,7 +564,8 @@ class Interp implements IInterp {
     }
 
     private inline function interpNew(className:VariableType, args:Array<Dynamic>):Dynamic {
-        var classType = Type.resolveClass(variableNames[className]);
+        var classType = if (variablesDeclared[className]) variablesValues[className] else Type.resolveClass(variableNames[className]);
+
         if (classType == null) classType = resolveGlobal(className);
         return Type.createInstance(classType, args);
     }
