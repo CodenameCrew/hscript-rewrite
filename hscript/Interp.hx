@@ -353,7 +353,7 @@ class Interp implements IInterp {
                 case Left(resolvedClass): resolvedClass;
                 case Right(rawEnum): StaticInterp.resolveEnum(rawEnum);
             }
-            trace(path,value);
+            trace(variableName,path,value);
 
             if (variablesLookup.exists(variableName)) 
                 assign(variablesLookup.get(variableName), value);
