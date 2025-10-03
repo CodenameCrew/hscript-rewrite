@@ -237,7 +237,7 @@ class Parser {
                 }
                 return parseNextExpr(mapDeclaration ? create(EMapDecl(exprs, values)) : create(EArrayDecl(exprs)));
             case LTOp(op):
-                if (LexerOp.ALL_LUNOPS.indexOf(op) != -1) { // Parse unops (!, -, ~, ++, --)
+                if (LexerOp.LEXER_TO_EXPR_UNOP.exists(op)) { // Parse unops (!, -, ~, ++, --)
                     var unop:ExprUnop = LexerOp.LEXER_TO_EXPR_UNOP.get(op);
                     if (op == SUB) { // Arithmetic Negation -123
                         var expr:Expr = parseExpr();
@@ -270,6 +270,7 @@ class Parser {
     }
 
     private function parseNextExpr(prev:Expr):Expr {
+        trace(peekToken());
         switch (readToken()) {
             case LTOp(op):
                 if (op == FUNCTION_ARROW) { // single arg reinterpretation of `f -> e` , `(f) -> e`
@@ -281,7 +282,7 @@ class Parser {
                     }
                 }
 
-                if (LexerOp.ALL_LUNOPS.indexOf(op) != -1) {
+                if (op == LexerOp.INCREMENT || op == LexerOp.DECREMENT) {
                     if (isBlock(prev) || prev.expr.match(EParent(_))) {
                         reverseToken(); // dont attach unary!!! 
                         return prev;
@@ -289,6 +290,7 @@ class Parser {
                     return parseNextExpr(create(EUnop(LexerOp.LEXER_TO_EXPR_UNOP.get(op), false, prev)));
                 }
 
+                trace(op);
                 var expr:Expr = parseExpr();
                 return parseBinop(LexerOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
             case LTDot | LTQuestionDot:
@@ -549,7 +551,8 @@ class Parser {
 
     private function parseType():String {
         var identifier:String = parseIdent();
-        if (maybe(LTOp(LT))) parseClassArgs();
+        if (maybe(LTOp(LT))) parseClassArgs(); // Type<Arg1, Arg2>
+        if (maybe(LTOp(FUNCTION_ARROW))) identifier += FUNCTION_ARROW + parseType(); // Type->Void
         return identifier;
     }
 
@@ -574,8 +577,7 @@ class Parser {
             switch (readToken()) {
                 case LTIdentifier(_) | LTComma: // do nothing
                 case LTOp(GT): break; // >
-                case LTEof: expected(LTOp(GT));
-                default: unexpected();
+                default: expected(LTOp(GT));
             }
         }
     }
@@ -585,6 +587,7 @@ class Parser {
         if (maybe(LTCloseP)) return args;
 
         while (true) {
+            trace(peekToken());
 			args.push(parseExpr());
 			switch (readToken()) {
 				case LTComma:
@@ -825,7 +828,7 @@ class Parser {
             if (maybe(LTQuestion)) argument.opt = true;
             argument.name = variableID(parseIdent());
 
-            if (maybe(LTColon)) parseIdent(); // var:Type
+            if (maybe(LTColon)) parseType(); // var:Type
 
             if (maybe(LTOp(ASSIGN)))
                 argument.value = parseExpr();

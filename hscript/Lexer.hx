@@ -113,11 +113,6 @@ enum abstract LexerOp(String) from String to String {
         LOOKUP_MAP;
     }
 
-    // Not used that much so no need for hashmap (hash map wouldn't make a difference, array has 4 elements)
-    public static final ALL_LUNOPS:Array<LexerOp> = [
-        SUB, NOT, NOT_BITWISE, INCREMENT, DECREMENT,
-    ];
-
     /**
      * Boiler plate for parser...
      * Should this be in the parser class?

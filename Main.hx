@@ -8,8 +8,7 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            function test(d) {}
-            test(-3);
+static function overWorldTransition(fadeIn:Bool, complete:Void->Void) {}
         ');
 
         var object = new Object();
