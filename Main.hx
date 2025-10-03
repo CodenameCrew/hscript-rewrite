@@ -8,7 +8,7 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-static function overWorldTransition(fadeIn:Bool, complete:Void->Void) {}
+            var FNF_RESOLUTION:{width:Float, height:Float} = null;
         ');
 
         var object = new Object();

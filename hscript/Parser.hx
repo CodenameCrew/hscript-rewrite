@@ -270,7 +270,6 @@ class Parser {
     }
 
     private function parseNextExpr(prev:Expr):Expr {
-        trace(peekToken());
         switch (readToken()) {
             case LTOp(op):
                 if (op == FUNCTION_ARROW) { // single arg reinterpretation of `f -> e` , `(f) -> e`
@@ -290,7 +289,6 @@ class Parser {
                     return parseNextExpr(create(EUnop(LexerOp.LEXER_TO_EXPR_UNOP.get(op), false, prev)));
                 }
 
-                trace(op);
                 var expr:Expr = parseExpr();
                 return parseBinop(LexerOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
             case LTDot | LTQuestionDot:
@@ -550,10 +548,28 @@ class Parser {
     }
 
     private function parseType():String {
-        var identifier:String = parseIdent();
-        if (maybe(LTOp(LT))) parseClassArgs(); // Type<Arg1, Arg2>
-        if (maybe(LTOp(FUNCTION_ARROW))) identifier += FUNCTION_ARROW + parseType(); // Type->Void
-        return identifier;
+        switch (readToken()) {
+            case LTIdentifier(identifier):
+                if (maybe(LTOp(LT))) parseClassArgs(); // Type<Arg1, Arg2>
+                if (maybe(LTOp(FUNCTION_ARROW))) identifier += FUNCTION_ARROW + parseType(); // Type->Void
+                return identifier;
+            case LTOpenCB:
+                while (true) {
+                    switch (readToken()) {
+                        case LTIdentifier(identifier):
+                            ensure(LTColon);
+                            parseType();
+                        case LTComma:
+                        case LTCloseCB: break;
+                        default: unexpected(); break;
+                    }
+                }
+                return null;
+            default:
+                unexpected();
+                reverseToken();
+                return null;
+        }
     }
 
     private function parseClassName():String { // haxe.Unserializer
@@ -587,7 +603,6 @@ class Parser {
         if (maybe(LTCloseP)) return args;
 
         while (true) {
-            trace(peekToken());
 			args.push(parseExpr());
 			switch (readToken()) {
 				case LTComma:
@@ -984,6 +999,6 @@ class Parser {
 
     private function error(err:ErrorDef) {
         var currentToken:LTokenPos = readPosition();
-		throw new Error(err, currentToken.min, currentToken.max, fileName, currentToken.line);
+		throw new Error(err, currentToken.min, currentToken.max, fileName, currentToken.line+1);
 	}
 }
