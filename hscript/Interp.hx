@@ -323,7 +323,7 @@ class Interp implements IInterp {
         return null;
     }
 
-    private inline function interpImport(path:String, mode:EImportMode):Dynamic {
+    private function interpImport(path:String, mode:EImportMode):Dynamic {
         if (mode == All) return null; // not implemented
 
         var splitPathName:Array<String> = path.split(".");
@@ -335,9 +335,10 @@ class Interp implements IInterp {
             default: lastPathName;
         }
 
-        var variableID:VariableType = variablesLookup.get(variableName);
-        if (variableID != -1 && variablesDeclared[variableID])
-            return variablesValues[variableID];
+        if (variablesLookup.exists(variableName)) {
+            var variableID:VariableType = variablesLookup.get(variableName);
+            if (variablesDeclared[variableID]) return variablesValues[variableID];
+        }
 
         var testClass:Either<Class<Dynamic>, Enum<Dynamic>> = StaticInterp.resolvePath(path);
         if (testClass == null) {
@@ -352,9 +353,10 @@ class Interp implements IInterp {
                 case Left(resolvedClass): resolvedClass;
                 case Right(rawEnum): StaticInterp.resolveEnum(rawEnum);
             }
+            trace(path,value);
 
-            variableID = variablesLookup.get(variableName);
-            if (variableID != -1) assign(variableID, value);
+            if (variablesLookup.exists(variableName)) 
+                assign(variablesLookup.get(variableName), value);
 
             return value;
         }
