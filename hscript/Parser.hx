@@ -332,10 +332,12 @@ class Parser {
                 ensure(LTCloseP);
 
                 var expr:Expr = parseExpr();
-
                 var elseExpr:Expr = null;
+
+                var semic:Bool = maybe(LTSemiColon);
                 if (maybe(LTKeyWord(ELSE)))
                     elseExpr = parseExpr();
+                else if (semic) reverseToken();
 
                 create(EIf(condition, expr, elseExpr));
             case WHILE:

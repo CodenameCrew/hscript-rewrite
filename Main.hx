@@ -8,7 +8,10 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            var FNF_RESOLUTION:{width:Float, height:Float} = null;
+            if (pixelPerfect)
+                FlxG.cameras.cameraAdded.add(__onCameraAdd);
+            else
+                FlxG.cameras.cameraAdded.remove(__onCameraAdd);
         ');
 
         var object = new Object();
