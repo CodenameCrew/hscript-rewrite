@@ -579,7 +579,7 @@ class Interp implements IInterp {
     private inline function interpNew(className:VariableType, args:Array<Dynamic>):Dynamic {
         trace(variableNames[className]);
         var classType = if (variablesDeclared[className]) variablesValues[className] else Type.resolveClass(variableNames[className]);
-        trace(variablesDeclared[className]);
+        trace(variablesDeclared[className], variablesValues[className]);
         if (classType == null) classType = resolveGlobal(className);
 
         var params:Array<Dynamic> = [for (arg in args) interpExpr(arg)];
