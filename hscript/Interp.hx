@@ -755,11 +755,11 @@ class Interp implements IInterp {
      * 
      * trace(z); does not call resolve, local
      */
-    private inline function resolve(varName:String):Dynamic {
+    private function resolve(varName:String):Dynamic {
         error(EUnknownVariable(varName), this.lineNumber);
     }
 
-    private inline function resolveGlobal(ident:VariableType):Dynamic {
+    private function resolveGlobal(ident:VariableType):Dynamic {
         var varName:String = variableNames[ident];
                 
         if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
