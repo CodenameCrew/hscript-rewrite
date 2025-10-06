@@ -10,24 +10,27 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            MusicBeatState.skipTransIn = MusicBeatState.skipTransOut = true;
-            FlxG.camera.flash(0xFFFFFFFF);
+            function main() {
+                return x;
+            }
+
+            main();
         ');
 
         var object = new Object();
         var interp = new Interp("Main.hx");
+        interp.scriptParent = object;
+        trace(interp.scriptParentFields);
         interp.variables.set("MusicBeatState", {skipTransIn: false, skipTransOut:false});
         interp.variables.set("FlxG", {camera: {flash: (int:Int, time:Float) -> {trace(int);}}});
         trace(interp.execute(expr));
     }
 }
 
-class Object implements IHScriptCustomBehaviour {
+class Object {
     public var x:Float = 3;
     public function new() {}
 
-    public function hset(name:String, value:Dynamic):Dynamic {trace(name, value); return name;};
-	public function hget(name:String):Dynamic {trace(name); return name;};
 }
 
 class ExprPrinter {

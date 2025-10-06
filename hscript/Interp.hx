@@ -616,7 +616,7 @@ class Interp implements IInterp {
         switch (left.expr) {
             case EIdent(name): 
                 var varName:String = variableNames[name];
-                if (isScriptParentField(varName))
+                if (hasScriptParent && isScriptParentField(varName))
                     return setScriptParentField(varName, assignValue);
                 assign(name, assignValue);
             case EField(expr, field, isSafe):
@@ -646,7 +646,7 @@ class Interp implements IInterp {
                 else {
                     var varName:String = variableNames[name];
 
-                    if (isScriptParentField(varName)) {
+                    if (hasScriptParent && isScriptParentField(varName)) {
                         var value:Dynamic = getScriptParentField(varName);
                         assignValue = StaticInterp.evaluateBinop(op, value, assignValue);
 
@@ -761,14 +761,20 @@ class Interp implements IInterp {
 
     private inline function resolveGlobal(ident:VariableType):Dynamic {
         var varName:String = variableNames[ident];
-        if (isScriptParentField(varName)) return getScriptParentField(varName);
+                
         if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
         if (publicVariables != null && publicVariables.exists(varName)) return publicVariables.get(varName);
+
+        if (hasScriptParent) {
+            if (isScriptParentField(varName)) return getScriptParentField(varName);
+            if (isScriptParentField('get_$varName')) return getScriptParentField('get_$varName')();
+        }
+
         return resolve(varName);
     }
 
     private inline function isScriptParentField(field:String):Bool {
-        return hasScriptParent && scriptParentFields.exists(field);
+        return scriptParentFields.exists(field);
     }
     
     private inline function getScriptParentField(field:String):Dynamic {
