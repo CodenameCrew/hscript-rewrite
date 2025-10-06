@@ -580,7 +580,7 @@ class Interp implements IInterp {
         var classType = if (variablesDeclared[className]) variablesValues[className] else Type.resolveClass(variableNames[className]);
 
         if (classType == null) classType = resolveGlobal(className);
-        return Type.createInstance(classType, args);
+        return Type.createInstance(classType, [for (arg in args) interpExpr(arg)]);
     }
 
     private inline function interpMap(keys:Array<Dynamic>, values:Array<Dynamic>):Dynamic {
