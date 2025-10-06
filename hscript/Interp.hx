@@ -392,7 +392,7 @@ class Interp implements IInterp {
             }
 
             increaseScope();
-            assign(name, reflectiveFunction); // self recurssion
+            if (name != -1) assign(name, reflectiveFunction); // self recurssion
 
             for (arg in 0...args.length) assign(args[arg].name, inputArgs[arg]);
             var ret:Dynamic = null;
@@ -413,7 +413,7 @@ class Interp implements IInterp {
         }
 
         reflectiveFunction = Reflect.makeVarArgs(interpFunction);
-        if (name != null) {
+        if (name != -1) {
             if (scope == 0) {
                 var varName:String = variableNames[name];
                 if (isStatic && !StaticInterp.staticVariables.exists(varName)) {
