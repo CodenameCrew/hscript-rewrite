@@ -344,9 +344,9 @@ class Interp implements IInterp {
         if (testClass == null) {
             var splitPathCopy:Array<String> = splitPathName.copy();
             splitPathCopy.pop();
-
+            
             testClass = StaticInterp.resolvePath(splitPathCopy.join("."));
-            if (!mode.match(As(_))) variableName = splitPathCopy[splitPathCopy.length-1];
+            if (testClass != null && !mode.match(As(_))) variableName = splitPathCopy[splitPathCopy.length-1];
         }
 
         if (testClass != null) {
