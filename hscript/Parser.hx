@@ -89,7 +89,7 @@ class Parser {
                 if (maybe(LTCloseP)) { // empty args lambda () -> {}
                     deepEnsure(LTOp(FUNCTION_ARROW));
                     var expr:Expr = parseExpr();
-                    return create(EFunction(null, expr, null, false, false));
+                    return create(EFunction([], expr, null, false, false));
                 }
 
                 inline function parseLambda(args:Array<Argument>) {
@@ -276,7 +276,7 @@ class Parser {
                     switch (prev.expr) {
                         case EIdent(name), EParent(_.expr => EIdent(name)):
                             var expr:Expr = parseExpr();
-                            return create(EFunction(null, expr, null, false, false));
+                            return create(EFunction([], expr, null, false, false));
                         default: unexpected();
                     }
                 }
