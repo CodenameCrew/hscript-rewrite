@@ -343,8 +343,8 @@ class Interp implements IInterp {
         var testClass:Either<Class<Dynamic>, Enum<Dynamic>> = StaticInterp.resolvePath(path);
         if (testClass == null) {
             var splitPathCopy:Array<String> = splitPathName.copy();
-            splitPathCopy.pop();
-            
+            splitPathCopy.splice(-2, 1); 
+
             testClass = StaticInterp.resolvePath(splitPathCopy.join("."));
             if (testClass != null && !mode.match(As(_))) variableName = splitPathCopy[splitPathCopy.length-1];
         }
