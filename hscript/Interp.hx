@@ -346,6 +346,7 @@ class Interp implements IInterp {
             splitPathCopy.pop();
 
             testClass = StaticInterp.resolvePath(splitPathCopy.join("."));
+            if (!mode.match(As(_))) variableName = splitPathCopy[splitPathCopy.length-1];
         }
 
         if (testClass != null) {
