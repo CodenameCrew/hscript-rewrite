@@ -612,7 +612,6 @@ class Interp implements IInterp {
     }
 
     private function assignExpr(left:Expr, right:Expr):Dynamic {
-        trace(left.expr,right.expr);
         var assignValue:Dynamic = interpExpr(right);
         switch (left.expr) {
             case EIdent(name): 
@@ -632,7 +631,6 @@ class Interp implements IInterp {
                 if (array is IMap) StaticInterp.setMapValue(array, index, assignValue);
                 else array[index] = assignValue;
             default: 
-                trace("assingExpr");
                 error(EInvalidOp(EQ), left.line);
         }
 
