@@ -451,16 +451,9 @@ class Parser {
                         case LTKeyWord(DEFAULT):
                             if (defaultExpr != null) unexpected();
                             ensure(LTColon);
-                            
-                            var exprs:Array<Expr> = [];
-                            while (true) {
-                                switch (peekToken()) {
-                                    case LTKeyWord(CASE), LTKeyWord(DEFAULT), LTCloseCB: break;
-                                    case LTEof: break;
-                                    default: parseBlock(exprs);
-                                }
-                            }
+
                             defaultExpr = getSwitchExprs();
+                            trace(defaultExpr.expr);
                         case LTCloseCB: break;
                         default: unexpected();
                     }

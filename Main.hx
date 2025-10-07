@@ -7,23 +7,43 @@ import hscript.Interp;
 import hscript.Parser;
 
 class Main {
+    static function fibonacci(n: Int): Int {
+        return switch n {
+            case 0: 0;
+            case 1: 1;
+            case _: fibonacci(n - 1) + fibonacci(n - 2);
+        };
+    }
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            function main() {
-                return x;
+            function fibonacci(n: Int): Int {
+                trace(n);
+                return switch n {
+                    case 0: 0;
+                    case 1: 1;
+                    default: fibonacci(n - 1) + fibonacci(n - 2);
+                }
             }
 
-            main();
+            var t = 1;
+            trace(switch t {
+                case 0: 0;
+                case 1: 1;
+                default: 3;
+            });
+
+            fibonacci(2);
         ');
+
+        trace(ExprPrinter.print(expr));
 
         var object = new Object();
         var interp = new Interp("Main.hx");
         interp.scriptParent = object;
-        trace(interp.scriptParentFields);
         interp.variables.set("MusicBeatState", {skipTransIn: false, skipTransOut:false});
         interp.variables.set("FlxG", {camera: {flash: (int:Int, time:Float) -> {trace(int);}}});
-        trace(interp.execute(expr));
+        trace(interp.execute(expr), fibonacci(2));
     }
 }
 

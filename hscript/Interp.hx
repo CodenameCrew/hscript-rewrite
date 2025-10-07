@@ -279,6 +279,7 @@ class Interp implements IInterp {
             case ETry(expr, catchVar, catchExpr): interpTry(expr, catchVar, catchExpr);
             case EReturn(expr):
                 returnValue = expr == null ? null : interpExpr(expr);
+                trace(returnValue);
                 throw ISReturn;
             case EImport(path, mode): 
                 var importValue:Dynamic = interpImport(path, mode);
@@ -567,13 +568,20 @@ class Interp implements IInterp {
         var foundMatch:Bool = false;
 
         for (switchCase in cases) {
-            for (value in switchCase.values)
-                if (interpExpr(value) == switchValue) {foundMatch = true; break;}
+            for (value in switchCase.values) {
+                if (interpExpr(value) == switchValue) {
+                    foundMatch = true; 
+                    break;
+                }
+            }
 
-            if (foundMatch && switchCase.expr != null) switchValue = interpExpr(switchCase.expr);
+            if (foundMatch) 
+                switchValue = interpExpr(switchCase.expr);
         }
 
-        if (!foundMatch) switchValue = defaultExpr != null ? interpExpr(defaultExpr) : null;
+        if (!foundMatch) 
+            switchValue = defaultExpr != null ? interpExpr(defaultExpr) : null;
+
         return switchValue;
     }
 
