@@ -14,6 +14,7 @@ class Main {
             case _: fibonacci(n - 1) + fibonacci(n - 2);
         };
     }
+
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
@@ -38,19 +39,9 @@ class Main {
 
         trace(ExprPrinter.print(expr));
 
-        var object = new Object();
         var interp = new Interp("Main.hx");
-        interp.scriptParent = object;
-        interp.variables.set("MusicBeatState", {skipTransIn: false, skipTransOut:false});
-        interp.variables.set("FlxG", {camera: {flash: (int:Int, time:Float) -> {trace(int);}}});
         trace(interp.execute(expr), fibonacci(2));
     }
-}
-
-class Object {
-    public var x:Float = 3;
-    public function new() {}
-
 }
 
 class ExprPrinter {
