@@ -222,7 +222,10 @@ class Interp implements IInterp {
                 for (expr in exprs) 
                     value = interpExpr(expr);
                 return value;
-            case EField(expr, field, isSafe): if (isSafe && field == null) null else StaticInterp.getObjectField(interpExpr(expr), field);
+            case EField(expr, field, isSafe): 
+            	var obj:Dynamic = interpExpr(expr);
+				if (isSafe && obj == null) return null;
+				return StaticInterp.getObjectField(obj, field);
             case EUnop(op, isPrefix, expr):
                 switch (op) {
                     case INC: assignExprOp(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line));
@@ -237,8 +240,9 @@ class Interp implements IInterp {
                     case EField(expr, field, isSafe):
                         var object:Dynamic = interpExpr(expr);
                         if (object == null) {
-                            if (!isSafe) error(EInvalidAccess(field), expr.line);
-                            else null;
+                            if (isSafe) return null;
+                            error(EInvalidAccess(field), expr.line);
+                            return null;
                         }
                         return StaticInterp.callObjectField(object, StaticInterp.getObjectField(object, field), argValues);
                     default: return StaticInterp.callObjectField(null, interpExpr(func), argValues);

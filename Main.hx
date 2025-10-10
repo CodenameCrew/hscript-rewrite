@@ -8,11 +8,11 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            var holdTime:Float = 1;
+            var object:Float = null;
 
-            return holdTime += 0.5;
+            object?.cancel();
         ');
-        // trace(ExprPrinter.print(expr));
+        trace(ExprPrinter.print(expr));
 
         var interp = new Interp("Main.hx");
         trace(interp.execute(expr));

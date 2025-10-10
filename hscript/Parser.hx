@@ -292,12 +292,13 @@ class Parser {
                 var expr:Expr = parseExpr();
                 return parseBinop(LexerOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
             case LTDot | LTQuestionDot:
+                var isSafe:Bool = readTokenInPlace() == LTQuestionDot;
                 var fieldName:String = switch (readToken()) {
                     case LTIdentifier(identifier): identifier;
                     case LTKeyWord(keyword): cast keyword;
                     default: unexpected();
                 };
-                return parseNextExpr(create(EField(prev, fieldName, readTokenInPlace() == LTQuestionDot)));
+                return parseNextExpr(create(EField(prev, fieldName, isSafe)));
             case LTOpenP: return parseNextExpr(create(ECall(prev, parseParentheses())));
             case LTOpenBr: // array/map access arr[0]
                 var arrayIndex:Expr = parseExpr();
