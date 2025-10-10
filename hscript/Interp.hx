@@ -45,6 +45,7 @@ interface IInterp {
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
 
+    private function declare(name:VariableType, value:Dynamic):Dynamic;
     private function assign(name:VariableType, value:Dynamic):Dynamic;
 }
 
@@ -206,7 +207,7 @@ class Interp implements IInterp {
                         return null;
                     }
                 }
-                assign(name, init == null ? null : interpExpr(init));
+                declare(name, init == null ? null : interpExpr(init));
                 return null;
             case EBinop(op, left, right): 
                 switch (op) {
@@ -218,9 +219,9 @@ class Interp implements IInterp {
             case EParent(expr): interpExpr(expr);
             case EBlock(exprs):
                 var value:Dynamic = null;
-                for (expr in exprs)
+                for (expr in exprs) 
                     value = interpExpr(expr);
-                value;
+                return value;
             case EField(expr, field, isSafe): if (isSafe && field == null) null else StaticInterp.getObjectField(interpExpr(expr), field);
             case EUnop(op, isPrefix, expr):
                 switch (op) {
@@ -279,7 +280,6 @@ class Interp implements IInterp {
             case ETry(expr, catchVar, catchExpr): interpTry(expr, catchVar, catchExpr);
             case EReturn(expr):
                 returnValue = expr == null ? null : interpExpr(expr);
-                trace(returnValue);
                 throw ISReturn;
             case EImport(path, mode): 
                 var importValue:Dynamic = interpImport(path, mode);
@@ -357,7 +357,7 @@ class Interp implements IInterp {
             }
 
             if (variablesLookup.exists(variableName)) 
-                assign(variablesLookup.get(variableName), value);
+                declare(variablesLookup.get(variableName), value);
 
             return value;
         }
@@ -394,9 +394,9 @@ class Interp implements IInterp {
             }
 
             increaseScope();
-            if (name != -1) assign(name, reflectiveFunction); // self recurssion
+            if (name != -1) declare(name, reflectiveFunction); // self recurssion
 
-            for (arg in 0...args.length) assign(args[arg].name, inputArgs[arg]);
+            for (arg in 0...args.length) declare(args[arg].name, inputArgs[arg]);
             var ret:Dynamic = null;
 
             if (inTry) {
@@ -427,7 +427,7 @@ class Interp implements IInterp {
                     return reflectiveFunction;
                 }
             }
-            assign(name, reflectiveFunction);
+            declare(name, reflectiveFunction);
         }
         return reflectiveFunction;
     }
@@ -452,7 +452,7 @@ class Interp implements IInterp {
             decreaseScope();
 
             increaseScope();
-            assign(catchVar, error);
+            declare(catchVar, error);
             var value:Dynamic = interpExpr(catchExpr);
             decreaseScope();
 
@@ -463,14 +463,14 @@ class Interp implements IInterp {
     private inline function forKeyValueLoop(key:VariableType, value:VariableType, iterator:Expr, body:Expr) {
         increaseScope();
 
-        assign(key, null);
-        assign(value, null);
+        declare(key, null);
+        declare(value, null);
 
         var iterator:KeyValueIterator<Dynamic, Dynamic> = makeKeyValueIteratorExpr(iterator);
         while (iterator.hasNext()) {
             var iteratorValue:Dynamic = iterator.next();
-            assign(key, iteratorValue.key);
-            assign(value, iteratorValue.value);
+            declare(key, iteratorValue.key);
+            declare(value, iteratorValue.value);
             if (!interpLoop(body)) break;
         }
 
@@ -480,11 +480,11 @@ class Interp implements IInterp {
     private inline function forLoop(varName:VariableType, iterator:Expr, body:Expr) {
         increaseScope();
 
-        assign(varName, null);
+        declare(varName, null);
 
         var iterator:Iterator<Dynamic> = makeIteratorExpr(iterator);
         while (iterator.hasNext()) {
-            assign(varName, iterator.next());
+            declare(varName, iterator.next());
             if (!interpLoop(body)) break;
         }
 
@@ -575,8 +575,10 @@ class Interp implements IInterp {
                 }
             }
 
-            if (foundMatch) 
+            if (foundMatch) {
                 switchValue = interpExpr(switchCase.expr);
+                break;
+            }
         }
 
         if (!foundMatch) 
@@ -711,7 +713,7 @@ class Interp implements IInterp {
         return assignValue;
     }
 
-    private inline function assign(name:VariableType, value:Dynamic):Dynamic {
+    private inline function declare(name:VariableType, value:Dynamic):Dynamic {
         if (scope > 0 && (changes[name] == null || changes[name].scope <= this.scope)) {
             changes.set(name, {
                 old: changes[name],
@@ -720,7 +722,11 @@ class Interp implements IInterp {
                 scope: this.scope
             });
         }
+        
+        return assign(name, value);
+    }
 
+    private inline function assign(name:VariableType, value:Dynamic):Dynamic {
         variablesDeclared[name] = true;
         variablesValues[name] = value;
 

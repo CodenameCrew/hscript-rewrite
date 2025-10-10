@@ -432,8 +432,15 @@ class Parser {
                 ensure(LTOpenCB);
 
                 while (true) {
-                    switch (readToken()) {
-                        case LTKeyWord(CASE):
+                    switch ([readToken(), peekToken()]) {
+                        case [LTKeyWord(DEFAULT), _] | [LTKeyWord(CASE), LTIdentifier("_")]:
+                            if (defaultExpr != null) unexpected();
+                            if (peekToken().match(LTIdentifier(_))) parseIdent();
+                            ensure(LTColon);
+
+                            defaultExpr = getSwitchExprs();
+                            trace(defaultExpr.expr);
+                        case [LTKeyWord(CASE), _]:
                             var switchCase:SwitchCase = new SwitchCase([], null);
                             cases.push(switchCase);
 
@@ -448,13 +455,7 @@ class Parser {
                                 }
                             }
                             switchCase.expr = getSwitchExprs();
-                        case LTKeyWord(DEFAULT):
-                            if (defaultExpr != null) unexpected();
-                            ensure(LTColon);
-
-                            defaultExpr = getSwitchExprs();
-                            trace(defaultExpr.expr);
-                        case LTCloseCB: break;
+                        case [LTCloseCB, _]: break;
                         default: unexpected();
                     }
                 }

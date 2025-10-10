@@ -1,46 +1,24 @@
 package;
 
-import hscript.Ast.ExprBinop;
 import hscript.Ast.Expr;
-import hscript.Ast.IHScriptCustomBehaviour;
 import hscript.Interp;
 import hscript.Parser;
 
 class Main {
-    static function fibonacci(n: Int): Int {
-        return switch n {
-            case 0: 0;
-            case 1: 1;
-            case _: fibonacci(n - 1) + fibonacci(n - 2);
-        };
-    }
-
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            function fibonacci(n: Int): Int {
-                trace(n);
-                return switch n {
-                    case 0: 0;
-                    case 1: 1;
-                    default: fibonacci(n - 1) + fibonacci(n - 2);
-                }
+            var a:Int = 0;
+            function main() {
+                a = 3; // hscript sees this as var a = 3;
             }
-
-            var t = 1;
-            trace(switch t {
-                case 0: 0;
-                case 1: 1;
-                default: 3;
-            });
-
-            fibonacci(2);
+            main();
+            return a;
         ');
-
-        trace(ExprPrinter.print(expr));
+        // trace(ExprPrinter.print(expr));
 
         var interp = new Interp("Main.hx");
-        trace(interp.execute(expr), fibonacci(2));
+        trace(interp.execute(expr));
     }
 }
 
