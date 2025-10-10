@@ -766,10 +766,10 @@ class Interp implements IInterp {
      * static var y:Float = 3;
      * var z:Float = 3;
      * 
-     * trace(x); calls resolve, not local
-     * trace(y); calls resolve, not local
+     * x += 2; calls resolve, not local
+     * y += 2; calls resolve, not local
      * 
-     * trace(z); does not call resolve, local
+     * z += 2; does not call resolve, local
      */
     private function resolve(varName:String):Dynamic {
         error(EUnknownVariable(varName), this.lineNumber);

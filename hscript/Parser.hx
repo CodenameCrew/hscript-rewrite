@@ -439,7 +439,6 @@ class Parser {
                             ensure(LTColon);
 
                             defaultExpr = getSwitchExprs();
-                            trace(defaultExpr.expr);
                         case [LTKeyWord(CASE), _]:
                             var switchCase:SwitchCase = new SwitchCase([], null);
                             cases.push(switchCase);
