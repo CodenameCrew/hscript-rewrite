@@ -8,12 +8,9 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            var a:Int = 0;
-            function main() {
-                a = 3; // hscript sees this as var a = 3;
-            }
-            main();
-            return a;
+            var holdTime:Float = 1;
+
+            return holdTime += 0.5;
         ');
         // trace(ExprPrinter.print(expr));
 

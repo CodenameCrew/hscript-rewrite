@@ -654,7 +654,7 @@ class Interp implements IInterp {
         switch (left.expr) {
             case EIdent(name): 
                 if (variablesDeclared[name])
-                    assign(name, StaticInterp.evaluateBinop(op, interpExpr(left), assignValue));
+                    assign(name, assignValue = StaticInterp.evaluateBinop(op, interpExpr(left), assignValue));
                 else {
                     var varName:String = variableNames[name];
 
@@ -662,7 +662,7 @@ class Interp implements IInterp {
                         var value:Dynamic = getScriptParentField(varName);
                         assignValue = StaticInterp.evaluateBinop(op, value, assignValue);
 
-                        setScriptParentField(varName, assignValue);
+                        assignValue = setScriptParentField(varName, assignValue);
                         return assignValue;
                     }
 
