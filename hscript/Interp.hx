@@ -214,7 +214,34 @@ class Interp implements IInterp {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | 
                         SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN: assignExprOp(op, left, right);
                     case ASSIGN: assignExpr(left, right);
-                    default: StaticInterp.evaluateBinop(op, interpExpr(left), interpExpr(right));
+
+                    case ADD: return interpExpr(left) + interpExpr(right);
+                    case SUB: return interpExpr(left) - interpExpr(right);
+                    case MULT: return interpExpr(left) * interpExpr(right);
+                    case DIV: return interpExpr(left) / interpExpr(right);
+                    case MOD: return interpExpr(left) % interpExpr(right);
+
+                    case AND: return interpExpr(left) & interpExpr(right);
+                    case OR: return interpExpr(left) | interpExpr(right);
+                    case XOR: return interpExpr(left) ^ interpExpr(right);
+                    case SHL: return interpExpr(left) << interpExpr(right);
+                    case SHR: return interpExpr(left) >> interpExpr(right);
+                    case USHR: return interpExpr(left) >>> interpExpr(right);
+
+                    case EQ: return interpExpr(left) == interpExpr(right);
+                    case NEQ: return interpExpr(left) != interpExpr(right);
+                    case GTE: return interpExpr(left) >= interpExpr(right);
+                    case LTE: return interpExpr(left) <= interpExpr(right);
+                    case GT: return interpExpr(left) > interpExpr(right);
+                    case LT: return interpExpr(left) < interpExpr(right);
+
+                    case BOR: return interpExpr(left) || interpExpr(right);
+                    case BAND: return interpExpr(left) && interpExpr(right);
+                    case IS: return Std.isOfType(interpExpr(left), interpExpr(right));
+                    case NCOAL: return interpExpr(left) ?? interpExpr(right);
+
+                    case INTERVAL: return new IntIterator(interpExpr(left), interpExpr(right));
+                    case ARROW: return null;
                 }
             case EParent(expr): interpExpr(expr);
             case EBlock(exprs):
@@ -820,7 +847,7 @@ class Interp implements IInterp {
 class StaticInterp {
 	public static var staticVariables:StringMap<Dynamic> = new StringMap<Dynamic>();
     
-    public static inline function evaluateBinop(op:ExprBinop, val1 :Dynamic, val2:Dynamic):Dynamic {
+    public static inline function evaluateBinop(op:ExprBinop, val1:Dynamic, val2:Dynamic):Dynamic {
         switch (op) {
             case ADD: return val1 + val2;
             case SUB: return val1 - val2;
@@ -860,7 +887,8 @@ class StaticInterp {
             case IS: return Std.isOfType(val1 , val2);
             case NCOAL: return val1 ?? val2;
 
-            default: throw new Error(EInvalidOp(op));
+            case INTERVAL: return new IntIterator(val1, val2);
+            case ARROW | ASSIGN: return null;
         }
     }
 
