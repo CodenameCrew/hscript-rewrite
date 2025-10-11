@@ -1,5 +1,6 @@
 package hscript;
 
+import Main.ExprPrinter;
 import hscript.Interp.StaticInterp;
 import haxe.ds.StringMap;
 import hscript.Ast.Expr;
@@ -895,7 +896,8 @@ class Parser {
         if (exprs != null && expr != null) exprs.push(expr);
 
         var testToken:LToken = readToken();
-        if (testToken != LTSemiColon && testToken != LTEof)
+        trace(ExprPrinter.print(expr));
+        if (testToken != LTSemiColon && testToken != LTEof) 
             if (isBlock(expr)) reverseToken();
             else expected(LTSemiColon);
     }
@@ -926,7 +928,7 @@ class Parser {
             case EWhile(_, expr): isBlock(expr);
             case EDoWhile(_, expr): isBlock(expr);
             case EFor(_, _, expr): isBlock(expr);
-            case EForKeyValue(_, _, expr, _): isBlock(expr);
+            case EForKeyValue(_, _, _, expr): isBlock(expr);
             case EReturn(expr): expr != null && isBlock(expr);
             case ETry(_, _, expr): isBlock(expr);
             case EMeta(_, _, expr): isBlock(expr);
