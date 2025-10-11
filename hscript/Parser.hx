@@ -1,6 +1,5 @@
 package hscript;
 
-import Main.ExprPrinter;
 import hscript.Interp.StaticInterp;
 import haxe.ds.StringMap;
 import hscript.Ast.Expr;
@@ -896,7 +895,6 @@ class Parser {
         if (exprs != null && expr != null) exprs.push(expr);
 
         var testToken:LToken = readToken();
-        trace(ExprPrinter.print(expr));
         if (testToken != LTSemiColon && testToken != LTEof) 
             if (isBlock(expr)) reverseToken();
             else expected(LTSemiColon);
