@@ -8,9 +8,7 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            var object:Float = null;
-
-            object?.cancel();
+            return 1280 - 33 - 392 - 40 - 8;
         ');
         trace(ExprPrinter.print(expr));
 

@@ -724,7 +724,7 @@ class Parser {
         if (right == null) return create(EBinop(op, left, right));
         return switch (right.expr) {
             case EBinop(op2, left2, right2):
-                if (ExprBinop.OP_PRECEDENCE_LOOKUP[cast op] < ExprBinop.OP_PRECEDENCE_LOOKUP[cast op2] && !ExprBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION[cast op])
+                if (ExprBinop.OP_PRECEDENCE_LOOKUP[cast op] <= ExprBinop.OP_PRECEDENCE_LOOKUP[cast op2] && !ExprBinop.OP_PRECEDENCE_RIGHT_ASSOCIATION[cast op])
                     create(EBinop(op2, parseBinop(op, left, left2), right2));
                 else 
                     create(EBinop(op, left, right));
