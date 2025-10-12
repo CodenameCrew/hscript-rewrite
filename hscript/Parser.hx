@@ -89,7 +89,7 @@ class Parser {
                 if (maybe(LTCloseP)) { // empty args lambda () -> {}
                     deepEnsure(LTOp(FUNCTION_ARROW));
                     var expr:Expr = parseExpr();
-                    return create(EFunction([], expr, null, false, false));
+                    return create(EFunction([], expr, -1, false, false));
                 }
 
                 inline function parseLambda(args:Array<Argument>) {
@@ -101,7 +101,7 @@ class Parser {
                     deepEnsure(LTOp(FUNCTION_ARROW));
 
                     var expr:Expr = parseExpr();
-                    return create(EFunction(args, expr, null, false, false));
+                    return create(EFunction(args, expr, -1, false, false));
                 }
                 
                 var expr:Expr = parseExpr();
@@ -276,7 +276,7 @@ class Parser {
                     switch (prev.expr) {
                         case EIdent(name), EParent(_.expr => EIdent(name)):
                             var expr:Expr = parseExpr();
-                            return create(EFunction([], expr, null, false, false));
+                            return create(EFunction([], expr, -1, false, false));
                         default: unexpected();
                     }
                 }
@@ -596,7 +596,7 @@ class Parser {
                     if (stringOP.length > 1 && stringOP.charCodeAt(0) == ">".code) { // handle >> and >>> in type declarations
                         var tokenPos:LTokenPos = readPosition();
                         reverseToken();
-                        
+
                         this.tokens[this.token].token = LTOp(GT);
                         for (i in 0...stringOP.length-1)
                             this.tokens.insert(this.token, {

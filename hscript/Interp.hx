@@ -272,7 +272,8 @@ class Interp implements IInterp {
                             return null;
                         }
                         return StaticInterp.callObjectField(object, StaticInterp.getObjectField(object, field), argValues);
-                    default: return StaticInterp.callObjectField(null, interpExpr(func), argValues);
+                    default: 
+                        return StaticInterp.callObjectField(null, interpExpr(func), argValues);
                 }
             case EIf(cond, thenExpr, elseExpr):
                 return if (interpExpr(cond) == true) 
@@ -300,7 +301,6 @@ class Interp implements IInterp {
                 var object:Dynamic = {};
                 for (field in fields) 
                     Reflect.setField(object, field.name, interpExpr(field.expr));
-
                 object;
             case EForKeyValue(key, value, iterator, body): forKeyValueLoop(key, value, iterator, body); null;
             case EFor(varName, iterator, body): forLoop(varName, iterator, body); null;
