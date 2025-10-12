@@ -586,10 +586,28 @@ class Parser {
 
     private inline function parseClassArgs() {
         while (true) { // Class<Arg1, Arg2>
-            switch (readToken()) {
+            var token:LToken = readToken();
+            switch (token) {
                 case LTIdentifier(_) | LTComma: // do nothing
+                case LTOp(LT): parseClassArgs(); // <
                 case LTOp(GT): break; // >
-                default: expected(LTOp(GT));
+                case LTOp(op):
+                    var stringOP:String = cast op;
+                    if (stringOP.length > 1 && stringOP.charCodeAt(0) == ">".code) { // handle >> and >>> in type declarations
+                        var tokenPos:LTokenPos = readPosition();
+                        reverseToken();
+                        
+                        this.tokens[this.token].token = LTOp(GT);
+                        for (i in 0...stringOP.length-1)
+                            this.tokens.insert(this.token, {
+                                token : LTOp(GT), 
+                                min : tokenPos.min, 
+                                max : tokenPos.max,
+                                line : tokenPos.line
+                            });
+                    }
+                default: 
+                    expected(LTOp(GT));
             }
         }
     }

@@ -8,8 +8,8 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            for (member in 1...5)
-                return member;
+            var arr:Array<Array<Float>> = [];
+            arr;
         ');
 
         var interp = new Interp("Main.hx");
