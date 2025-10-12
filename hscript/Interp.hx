@@ -345,7 +345,6 @@ class Interp implements IInterp {
         try {
             return interpReturnExpr(expr);
         } catch (e:Error) {
-            Sys.println(haxe.CallStack.toString(haxe.CallStack.exceptionStack()));
 			if (errorHandler != null) errorHandler(e);
 			else throw e;
 			return null;
@@ -988,7 +987,7 @@ class InterpLocals {
         if (useDefaults) {
             defaultsValues.set(key, value);
         } else {
-		    if (parent.variablesLookup.exists(key)) 
+		    if (parent.variablesLookup != null && parent.variablesLookup.exists(key)) 
                 parent.assign(parent.variablesLookup.get(key), value);
         }
 	}
@@ -997,7 +996,7 @@ class InterpLocals {
         if (useDefaults) {
             return defaultsValues.get(key);
         } else {
-		    if (parent.variablesLookup.exists(key)) {
+		    if (parent.variablesLookup != null && parent.variablesLookup.exists(key)) {
                 var varID:Int = parent.variablesLookup.get(key);
                 return parent.variablesDeclared[varID] ? parent.variablesValues[varID] : null; 
             } else 
@@ -1006,6 +1005,6 @@ class InterpLocals {
 	}
 
 	public inline function exists(key:String):Bool {
-		return parent.variablesLookup.exists(key) && parent.variablesDeclared[parent.variablesLookup.get(key)];
+		return parent.variablesLookup != null && parent.variablesLookup.exists(key) && parent.variablesDeclared[parent.variablesLookup.get(key)];
 	}
 }
