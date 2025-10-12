@@ -202,7 +202,7 @@ enum EImportMode {
     All; // import haxe.*;
 }
 
-typedef VariableType = Null<Int>;
+typedef VariableType = Int;
 typedef VariableInfo = Array<String>;
 
 interface IHScriptCustomBehaviour {

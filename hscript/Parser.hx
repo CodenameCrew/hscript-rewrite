@@ -851,7 +851,7 @@ class Parser {
         if (maybe(LTCloseP)) return args;
         
         while (true) {
-			var argument:Argument = new Argument(null);
+			var argument:Argument = new Argument(-1);
 
             if (maybe(LTQuestion)) argument.opt = true;
             argument.name = variableID(parseIdent());

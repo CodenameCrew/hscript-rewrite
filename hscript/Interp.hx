@@ -405,7 +405,7 @@ class Interp implements IInterp {
             if ((inputArgs == null ? 0 : inputArgs.length) < argsNeeded) {
                 error(ECustom(
                     "Invalid number of parameters. Got " + inputArgs.length + ", required " + argsNeeded +
-                    (name != null ? " for function '" + variableNames[name] + "'" : "")
+                    (name != -1 ? " for function '" + variableNames[name] + "'" : "")
                 ), body.line);
 
                 var fixedArgs:Array<Dynamic> = [];
