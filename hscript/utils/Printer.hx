@@ -16,7 +16,6 @@ class Printer {
 	private var depth:Int = 0;
 	private var spaceChar:String = null;
 	private var space(get, never):String;
-
 	private function get_space() {
 		var spaces:String = "";
 		if (spaceChar != null)
@@ -183,7 +182,7 @@ class Printer {
 			case EForKeyValue(key, value, iterator, body):
 				var keyName = variableNames[key];
 				var valueName = variableNames[value];
-				add('for( $keyName => $valueName in');
+				add('for( $keyName => $valueName in ');
 				expr(iterator);
 				add(" ) ");
 				expr(body);
@@ -315,7 +314,8 @@ class Printer {
 						add(".*");
 					default:
 				}
-			default:
+			case EInfo(_, _):
+				add("<EInfo>");
 		}
 	}
 

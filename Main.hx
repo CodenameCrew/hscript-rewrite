@@ -6,13 +6,8 @@ import hscript.Interp;
 import hscript.Parser;
 
 class Main {
-    public static function main() {
-        var parser = new Parser();
-        var expr = parser.parseString("
-            import some.ClassA;
-            import some.ClassB as ClassC;
-            import some.*;
-            var a:Int = 0;
+	private static inline var code:String = "
+            var a:Int = 5;
 
             function sum(a:Int) {
                 return a + 1;    
@@ -23,6 +18,9 @@ class Main {
             var m = [1 => 'a', 2 => 'b', 3 => 'c'];
             var b = m[1];
             trace(b);
+            for(k => v in m) {
+                trace(k + ' -> ' + v);
+            }
             var c = {
                 aa: ':3',
                 ab: function() {
@@ -31,8 +29,15 @@ class Main {
             };
             trace(c?.aa);
             trace(c.ab());
-        ");
+        ";
+    public static function main() {
+        var parser = new Parser();
+        var expr = parser.parseString(code);
+        trace("Code: \n");
         trace(Printer.toString(expr));
+        trace("Output:");
+        var interp = new Interp("Main.hx");
+        interp.execute(expr);
         /*
         var parser = new Parser();
         var expr = parser.parseString('
