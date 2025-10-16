@@ -35,10 +35,15 @@ private class IDeclaredVariable {
     public var oldValue:Dynamic;
 }
 
+class IVariableReference {
+    public var r:Dynamic;
+    public function new(r:Dynamic) {this.r = r;}
+}
+
 @:allow(hscript)
 interface IInterp {
     private var variablesDeclared:Vector<Bool>;
-    private var variablesValues:Vector<{r:Dynamic}>;
+    private var variablesValues:Vector<IVariableReference>;
 
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
@@ -47,6 +52,7 @@ interface IInterp {
     private function assign(name:VariableType, value:Dynamic):Dynamic;
 }
 
+@:analyzer(optimize, local_dce, fusion, user_var_fusion)
 class Interp implements IInterp {
     /**
      * Our variables used no matter what scope, fastest by far winner when it comes to raw reading and writing.
@@ -62,7 +68,7 @@ class Interp implements IInterp {
      * hopefully this is the right choice and doesn't give any headaches later :D -lunar
      */
     private var variablesDeclared:Vector<Bool>;
-    private var variablesValues:Vector<{r:Dynamic}>;
+    private var variablesValues:Vector<IVariableReference>;
 
     /**
      * Use variablesLookup.get(s) instead of variableNames.
@@ -160,8 +166,8 @@ class Interp implements IInterp {
 
     private function loadTables(info:VariableInfo) {
         variablesDeclared = new Vector<Bool>(info.length);
-        variablesValues = new Vector<{r:Dynamic}>(info.length);
-        for (i in 0...variablesValues.length) variablesValues[i] = {r: null};
+        variablesValues = new Vector<IVariableReference>(info.length);
+        for (i in 0...variablesValues.length) variablesValues[i] = new IVariableReference(null);
 
         variableNames = Vector.fromArrayCopy(info);
         variablesLookup = new StringMap<Int>();
@@ -397,7 +403,7 @@ class Interp implements IInterp {
 
     private function interpFunction(args:Array<Argument>, body:Expr, name:VariableType, ?isPublic:Bool, ?isStatic:Bool) {
         var capturedVariablesDeclared:Vector<Bool> = duplicate(variablesDeclared);
-        var capturedVariablesValues:Vector<{r:Dynamic}> = duplicate(variablesValues);
+        var capturedVariablesValues:Vector<IVariableReference> = duplicate(variablesValues);
 
         var interpInstance:Interp = this;
 
@@ -429,7 +435,7 @@ class Interp implements IInterp {
             }
 
             var oldVariablesDeclared:Vector<Bool> = interpInstance.variablesDeclared;
-            var oldVariablesValues:Vector<{r:Dynamic}> = interpInstance.variablesValues;
+            var oldVariablesValues:Vector<IVariableReference> = interpInstance.variablesValues;
             var oldDepth:Int = interpInstance.depth;
 
             interpInstance.depth++;
@@ -768,8 +774,8 @@ class Interp implements IInterp {
         });
         
         variablesDeclared[name] = true;
-        variablesValues[name] = {r: value};
-        
+        variablesValues[name] = new IVariableReference(value);
+
         return value;
     }
 
@@ -798,7 +804,7 @@ class Interp implements IInterp {
                 variablesValues[name] = change.oldValue;
             } else {
                 variablesDeclared[name] = false;
-                variablesValues[name] = {r: null};
+                variablesValues[name] = new IVariableReference(null);
             }
         }
 	}
