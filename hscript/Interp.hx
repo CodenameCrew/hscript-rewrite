@@ -29,18 +29,16 @@ private enum IScriptParentType {
 }
 
 @:structInit
-private class IVariableScopeChange {
-    public var old:IVariableScopeChange;
-
+private class IDeclaredVariable {
+    public var name:VariableType;
     public var oldDeclared:Bool;
     public var oldValue:Dynamic;
-    public var scope:Int;
 }
 
 @:allow(hscript)
 interface IInterp {
     private var variablesDeclared:Vector<Bool>;
-    private var variablesValues:Vector<Dynamic>;
+    private var variablesValues:Vector<{r:Dynamic}>;
 
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
@@ -64,7 +62,7 @@ class Interp implements IInterp {
      * hopefully this is the right choice and doesn't give any headaches later :D -lunar
      */
     private var variablesDeclared:Vector<Bool>;
-    private var variablesValues:Vector<Dynamic>;
+    private var variablesValues:Vector<{r:Dynamic}>;
 
     /**
      * Use variablesLookup.get(s) instead of variableNames.
@@ -80,9 +78,9 @@ class Interp implements IInterp {
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
 
-    private var changes:Vector<IVariableScopeChange>;
+    private var changes:Array<IDeclaredVariable> = [];
 
-    private var scope:Int = 0;
+    private var depth:Int = 0;
     private var inTry:Bool = false;
     private var returnValue:Dynamic = null;
 
@@ -149,25 +147,25 @@ class Interp implements IInterp {
 
         this.variableNames = null;
         this.variablesLookup = null;
-        this.changes = null;
+
+        this.changes = [];
 
         this.variables.useDefaults = true;
         this.variables.defaultsValues.clear();
 
-        this.scope = 0;
+        this.depth = 0;
         this.inTry = false;
         this.returnValue = null;
     }
 
     private function loadTables(info:VariableInfo) {
         variablesDeclared = new Vector<Bool>(info.length);
-        variablesValues = new Vector<Dynamic>(info.length);
+        variablesValues = new Vector<{r:Dynamic}>(info.length);
+        for (i in 0...variablesValues.length) variablesValues[i] = {r: null};
 
         variableNames = Vector.fromArrayCopy(info);
         variablesLookup = new StringMap<Int>();
         for (i => name in info) variablesLookup.set(name, i);
-
-        changes = new Vector<IVariableScopeChange>(info.length);
     }
 
     private function loadBaseVariables() {
@@ -194,9 +192,9 @@ class Interp implements IInterp {
         return switch (expr.expr) {
             case EMeta(name, args, expr): interpExpr(expr);
             case EConst(const): StaticInterp.evaluateConst(const);
-            case EIdent(name): if (variablesDeclared[name]) variablesValues[name]; else resolveGlobal(name);
+            case EIdent(name): if (variablesDeclared[name]) variablesValues[name].r; else resolveGlobal(name);
             case EVar(name, init, isPublic, isStatic):
-                if (scope == 0) {
+                if (depth == 0) {
                     var varName:String = variableNames[name];
                     if (isStatic && !StaticInterp.staticVariables.exists(varName)) {
                         StaticInterp.staticVariables.set(varName, interpExpr(init));
@@ -245,9 +243,11 @@ class Interp implements IInterp {
                 }
             case EParent(expr): interpExpr(expr);
             case EBlock(exprs):
+                var old:Int = store();
                 var value:Dynamic = null;
                 for (expr in exprs) 
                     value = interpExpr(expr);
+                restore(old);
                 return value;
             case EField(expr, field, isSafe): 
             	var obj:Dynamic = interpExpr(expr);
@@ -368,7 +368,7 @@ class Interp implements IInterp {
 
         if (variablesLookup.exists(variableName)) {
             var variableID:VariableType = variablesLookup.get(variableName);
-            if (variablesDeclared[variableID]) return variablesValues[variableID];
+            if (variablesDeclared[variableID]) return variablesValues[variableID].r;
         }
 
         var testClass:Either<Class<Dynamic>, Enum<Dynamic>> = StaticInterp.resolvePath(path);
@@ -396,6 +396,11 @@ class Interp implements IInterp {
     } 
 
     private function interpFunction(args:Array<Argument>, body:Expr, name:VariableType, ?isPublic:Bool, ?isStatic:Bool) {
+        var capturedVariablesDeclared:Vector<Bool> = duplicate(variablesDeclared);
+        var capturedVariablesValues:Vector<{r:Dynamic}> = duplicate(variablesValues);
+
+        var interpInstance:Interp = this;
+
         var argsNeeded:Int = 0;
         for (arg in args) if (!arg.opt) argsNeeded++;
 
@@ -423,30 +428,43 @@ class Interp implements IInterp {
                 inputArgs = fixedArgs;
             }
 
-            increaseScope();
-            if (name != -1) declare(name, reflectiveFunction); // self recurssion
+            var oldVariablesDeclared:Vector<Bool> = interpInstance.variablesDeclared;
+            var oldVariablesValues:Vector<{r:Dynamic}> = interpInstance.variablesValues;
+            var oldDepth:Int = interpInstance.depth;
+
+            interpInstance.depth++;
+
+            interpInstance.variablesDeclared = duplicate(capturedVariablesDeclared);
+            interpInstance.variablesValues = duplicate(capturedVariablesValues);
 
             for (arg in 0...args.length) declare(args[arg].name, inputArgs[arg]);
             var ret:Dynamic = null;
 
+            var old:Int = store();
             if (inTry) {
                 try {
                     ret = interpReturnExpr(body);
                 } catch (error:Dynamic) {
-                    decreaseScope();
+                    restore(old);
+                    interpInstance.variablesDeclared = oldVariablesDeclared;
+                    interpInstance.variablesValues = oldVariablesValues;
+                    interpInstance.depth = oldDepth;
                     throw error;
                 }
             } else {
                 ret = interpReturnExpr(body);
             }
 
-            decreaseScope();
+            restore(old);
+            interpInstance.variablesDeclared = oldVariablesDeclared;
+            interpInstance.variablesValues = oldVariablesValues;
+            interpInstance.depth = oldDepth;
             return ret;
         }
 
         reflectiveFunction = Reflect.makeVarArgs(interpFunction);
         if (name != -1) {
-            if (scope == 0) {
+            if (depth == 0) {
                 var varName:String = variableNames[name];
                 if (isStatic && !StaticInterp.staticVariables.exists(varName)) {
                     StaticInterp.staticVariables.set(varName, reflectiveFunction);
@@ -464,34 +482,32 @@ class Interp implements IInterp {
 
     private inline function interpTry(expr, catchVar, catchExpr):Dynamic {
         var oldTryState:Bool = inTry;
-        increaseScope();
+        var old:Int = store();
         
         try {
             inTry = true;
             var value:Dynamic = interpExpr(expr);
-            decreaseScope();
+            restore(old);
 
             inTry = oldTryState;
             return value;
         } catch (stop:IStop) {
             inTry = oldTryState;
-            decreaseScope();
             throw stop;
         } catch (error:Dynamic) {
             inTry = oldTryState;
-            decreaseScope();
+            restore(old);
 
-            increaseScope();
             declare(catchVar, error);
             var value:Dynamic = interpExpr(catchExpr);
-            decreaseScope();
+            restore(old);
 
             return value;
         }
     }
 
     private inline function forKeyValueLoop(key:VariableType, value:VariableType, iterator:Expr, body:Expr) {
-        increaseScope();
+        var old:Int = store();
 
         declare(key, null);
         declare(value, null);
@@ -504,11 +520,11 @@ class Interp implements IInterp {
             if (!interpLoop(body)) break;
         }
 
-        decreaseScope();
+        restore(old);
     }
 
     private inline function forLoop(varName:VariableType, iterator:Expr, body:Expr) {
-        increaseScope();
+        var old:Int = store();
 
         declare(varName, null);
 
@@ -518,7 +534,7 @@ class Interp implements IInterp {
             if (!interpLoop(body)) break;
         }
 
-        decreaseScope();
+        restore(old);
     }
 
     private inline function makeIteratorExpr(expr:Expr):Iterator<Dynamic> {
@@ -559,23 +575,24 @@ class Interp implements IInterp {
 	}
 
     private inline function whileLoop(cond:Expr, body:Expr) {
-        increaseScope();
+        var old:Int = store();
 
         while (interpExpr(cond) == true) {
             if (!interpLoop(body)) break;
         }
 
-        decreaseScope();
+        restore(old);
     }
 
     private inline function doWhileLoop(cond:Expr, body:Expr) {
-        increaseScope();
+        var old:Int = store();
 
         do {
             if (!interpLoop(body)) break;
         } while (interpExpr(cond) == true);
 
-        decreaseScope();
+        
+        restore(old);
     }
 
     private inline function interpLoop(expr:Expr):Bool {
@@ -618,7 +635,7 @@ class Interp implements IInterp {
     }
 
     private inline function interpNew(className:VariableType, args:Array<Dynamic>):Dynamic {
-        var classType = if (variablesDeclared[className]) variablesValues[className] else Type.resolveClass(variableNames[className]);
+        var classType:Dynamic = if (variablesDeclared[className]) variablesValues[className].r else Type.resolveClass(variableNames[className]);
         if (classType == null) classType = resolveGlobal(className);
 
         var params:Array<Dynamic> = [for (arg in args) interpExpr(arg)];
@@ -744,48 +761,47 @@ class Interp implements IInterp {
     }
 
     private inline function declare(name:VariableType, value:Dynamic):Dynamic {
-        if (scope > 0 && (changes[name] == null || changes[name].scope <= this.scope)) {
-            changes.set(name, {
-                old: changes[name],
-                oldDeclared: variablesDeclared[name],
-                oldValue: variablesValues[name],
-                scope: this.scope
-            });
-        }
+        changes.push({
+            name: name,
+            oldDeclared: variablesDeclared[name],
+            oldValue: variablesValues[name]
+        });
         
-        return assign(name, value);
+        variablesDeclared[name] = true;
+        variablesValues[name] = {r: value};
+        
+        return value;
     }
 
     private inline function assign(name:VariableType, value:Dynamic):Dynamic {
         variablesDeclared[name] = true;
-        variablesValues[name] = value;
+        variablesValues[name].r = value;
 
         return value;
     }
 
-    private inline function increaseScope() {this.scope++;}
+    private function duplicate<T>(vector:Vector<T>):Vector<T> {
+        var newVector:Vector<T> = new Vector(vector.length);
+        for (i in 0...vector.length) newVector[i] = vector[i];
+        return newVector;
+	}
 
-    private inline function decreaseScope() {
-        this.scope--;
-        scopeChanges();
-    }
+    private inline function store():Int {return changes.length;}
 
-    private inline function scopeChanges() {
-        for (name in 0...changes.length) {
-            var change:IVariableScopeChange = changes.get(name);
-            if (change != null && change.scope > this.scope) {
-                if (change.oldDeclared) {
-                    variablesDeclared[name] = true;
-                    variablesValues[name] = change.oldValue;
-                } else {
-                    variablesDeclared[name] = false;
-                    variablesValues[name] = null;
-                }
-                
-                if (change.old != null) changes[name] = change.old;
+	private inline function restore(oldChangesIndex:Int) {
+        while (changes.length > oldChangesIndex) {
+            var change:IDeclaredVariable = changes.pop();
+            var name:VariableType = change.name;
+
+            if (change.oldDeclared) {
+                variablesDeclared[name] = change.oldDeclared;
+                variablesValues[name] = change.oldValue;
+            } else {
+                variablesDeclared[name] = false;
+                variablesValues[name] = {r: null};
             }
         }
-    }
+	}
 
     /**
      * !!!USE THIS FUNCTION TO FIND THINGS THAT ARE NOT DEFINED BY SCRIPT!!!

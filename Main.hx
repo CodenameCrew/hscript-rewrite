@@ -8,7 +8,22 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-            2 + 2;
+		var b = null;
+		var h = null;
+		function f(elapsed) {
+			b = () -> {
+				trace(elapsed);
+			}
+		}
+		function c(elapsed) {
+			h = () -> {
+				trace(elapsed);
+			}
+		}
+		f(34);
+		c(80);
+		h();
+		b();
         ');
 
         var interp = new Interp("Main.hx");
