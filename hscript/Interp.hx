@@ -60,26 +60,17 @@ class Interp implements IInterp {
      * Two arrays (mixed): 31.8157 ms
      * Enum array (mixed): 188.1146 ms
      * IntMap (mixed): 146.5216 ms
-     * Sentinel enum array (mixed): 125.6402 ms
      * Int sentinel array (mixed): 18.828 ms (not accounting for overhead of collisions)
      * Object array (mixed): 200.3166 ms
-     * 
-     * Scope changes will create variable changes that will be popped and reversed on the main array see changes array.
-     * hopefully this is the right choice and doesn't give any headaches later :D -lunar
      */
     private var variablesDeclared:Vector<Bool>;
     private var variablesValues:Vector<IVariableReference>;
 
     /**
-     * Use variablesLookup.get(s) instead of variableNames.
+     * Use variablesLookup.get(s) instead of variableNames.indexOf(s).
      * 
      * If variableNames was a Array<String> it would be a linear scan across array.
      * The variablesLookup map is generated in loadTables() function.
-     * 
-     * Linear scan Array: 2.359025s
-     * Linear scan Vector: 2.3816353s
-     * Array.indexOf: 2.0919545s
-     * Map lookup: 0.0215189000000002s
      */
     private var variableNames:Vector<String>;
     private var variablesLookup:StringMap<Int>;
