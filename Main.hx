@@ -1,5 +1,6 @@
 package;
 
+import haxe.Timer;
 import hscript.Ast.Expr;
 import hscript.Interp;
 import hscript.Parser;
@@ -8,25 +9,22 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-		var b = null;
-		var h = null;
-		function f(elapsed) {
-			b = () -> {
-				trace(elapsed);
+			function fib(n) {
+				if (n <= 1) return n;
+				return fib(n - 1) + fib(n - 2);
 			}
-		}
-		function c(elapsed) {
-			h = () -> {
-				trace(elapsed);
-			}
-		}
-		f(34);
-		c(80);
-		h();
-		b();
+
+			return fib(20);
         ');
 
         var interp = new Interp("Main.hx");
-        interp.execute(expr);
+
+		var time:Float = Timer.stamp();
+		var b = 0;
+		for (i in 0...20) {
+        	b += interp.execute(expr);
+		}
+		trace(b);
+		trace(Timer.stamp()- time);
     }
 }

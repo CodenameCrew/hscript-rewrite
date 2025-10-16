@@ -402,6 +402,7 @@ class Interp implements IInterp {
         for (arg in args) if (!arg.opt) argsNeeded++;
 
         var reflectiveFunction:Dynamic = null;
+        var functionRef:IVariableReference = null;
         var interpFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
             if ((inputArgs == null ? 0 : inputArgs.length) < argsNeeded) {
                 error(ECustom(
@@ -437,6 +438,8 @@ class Interp implements IInterp {
             for (arg in 0...args.length) declare(args[arg].name, inputArgs[arg]);
             var ret:Dynamic = null;
 
+            declareReferenced(name, functionRef); // self-recurrsion
+
             var old:Int = store();
             if (inTry) {
                 try {
@@ -460,6 +463,7 @@ class Interp implements IInterp {
         }
 
         reflectiveFunction = Reflect.makeVarArgs(interpFunction);
+        functionRef = new IVariableReference(reflectiveFunction);
         if (name != -1) {
             if (depth == 0) {
                 var varName:String = variableNames[name];
@@ -768,6 +772,19 @@ class Interp implements IInterp {
         variablesValues[name] = new IVariableReference(value);
 
         return value;
+    }
+
+    private inline function declareReferenced(name:VariableType, ref:IVariableReference):Dynamic {
+        changes.push({
+            name: name,
+            oldDeclared: variablesDeclared[name],
+            oldValue: variablesValues[name]
+        });
+        
+        variablesDeclared[name] = true;
+        variablesValues[name] = ref;
+
+        return ref.r;
     }
 
     private inline function assign(name:VariableType, value:Dynamic):Dynamic {
