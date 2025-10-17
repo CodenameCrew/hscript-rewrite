@@ -180,6 +180,52 @@ enum abstract ExprBinop(UInt8) {
             LOOKUP_MAP[cast x] = true;
         LOOKUP_MAP;
     }
+
+    public static function binopToString(op:ExprBinop):String {
+        return switch(op) {
+            case ADD: "+";
+            case SUB: "-";
+            case MULT: "*";
+            case DIV: "/";
+            case MOD: "%";
+
+            case AND: "&";
+            case OR: "|";
+            case XOR: "^";
+            case SHL: "<<";
+            case SHR: ">>";
+            case USHR: ">>>";
+
+            case EQ: "==";
+            case NEQ: "!=";
+            case GT: ">";
+            case GTE: ">=";
+            case LT: "<";
+            case LTE: "<=";
+
+            case BOR: "||";
+            case BAND: "&&";
+            case IS: "is";
+            case NCOAL: "??";
+
+            case INTERVAL: "...";
+            case ARROW: "=>";
+            case ASSIGN: "=";
+
+            case ADD_ASSIGN: "+=";
+            case SUB_ASSIGN: "-=";
+            case MULT_ASSIGN: "*=";
+            case DIV_ASSIGN: "/=";
+            case MOD_ASSIGN: "%=";
+            case SHL_ASSIGN: "<<=";
+            case SHR_ASSIGN: ">>=";
+            case USHR_ASSIGN: ">>>=";
+            case OR_ASSIGN: "|=";
+            case AND_ASSIGN: "&=";
+            case XOR_ASSIGN: "^=";
+            case NCOAL_ASSIGN: "??=";
+        }
+    }
 }
 
 /**
@@ -194,6 +240,16 @@ enum abstract ExprUnop(UInt8) {
 
     var INC:ExprUnop; // ++
     var DEC:ExprUnop; // --
+
+    public static function unopToString(op:ExprUnop):String {
+        return switch (op) {
+            case NEG_BIT: "~";
+            case NOT: "!";
+            case NEG: "-";
+            case INC: "++";
+            case DEC: "--";
+        }
+    }
 }
 
 enum EImportMode {
