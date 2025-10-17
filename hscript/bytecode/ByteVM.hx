@@ -1,5 +1,6 @@
 package hscript.bytecode;
 
+import hscript.Interp.StaticInterp;
 import hscript.Ast.ExprUnop;
 import hscript.Ast.ExprBinop;
 import hscript.bytecode.ByteInstruction;
@@ -203,13 +204,13 @@ class ByteVM {
 			case ByteInstruction.FIELD_GET:
 				var field = stack.pop(); // String
 				var obj = stack.pop(); // Object
-				stack.push(Reflect.field(obj, field));
+				stack.push(StaticInterp.getObjectField(obj, field));
 
 			case ByteInstruction.FIELD_SET:
 				var field = stack.pop(); // String
 				var obj = stack.pop(); // Object
 				var value = stack.pop(); // Dynamic
-				Reflect.setField(obj, field, value);
+				StaticInterp.setObjectField(obj, field, value);
 
 			case ByteInstruction.NEW:
 				var args = stack.pop();

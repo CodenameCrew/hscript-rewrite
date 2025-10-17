@@ -280,7 +280,7 @@ class Interp implements IInterp {
                 else interpExpr(elseExpr);
             case EBreak: throw ISBreak;
             case EContinue: throw ISContinue;
-            case EMapDecl(keys, values): interpMap([for (key in keys) interpExpr(key)], [for (val in values) interpExpr(val)]);
+            case EMapDecl(keys, values): StaticInterp.interpMap([for (key in keys) interpExpr(key)], [for (val in values) interpExpr(val)]);
             case EArrayDecl(items): [for (item in items) interpExpr(item)];
             case EArray(expr, index):
                 var array:Dynamic = interpExpr(expr);
@@ -537,40 +537,15 @@ class Interp implements IInterp {
 
     private inline function makeIteratorExpr(expr:Expr):Iterator<Dynamic> {
         var untypedIterator:Dynamic = interpExpr(expr);
-        var iterator:Iterator<Dynamic> = makeIterator(untypedIterator);
+        var iterator:Iterator<Dynamic> = StaticInterp.makeIterator(untypedIterator);
         return iterator == null ? throw error(EInvalidIterator(untypedIterator), expr.line) : iterator;
     }
 
     private inline function makeKeyValueIteratorExpr(expr:Expr):KeyValueIterator<Dynamic, Dynamic> {
         var untypedIterator:Dynamic = interpExpr(expr);
-        var iterator:KeyValueIterator<Dynamic, Dynamic> = makeKeyValueIterator(untypedIterator);
+        var iterator:KeyValueIterator<Dynamic, Dynamic> = StaticInterp.makeKeyValueIterator(untypedIterator);
         return iterator == null ? throw error(EInvalidIterator(untypedIterator), expr.line) : iterator;
     }
-
-    private inline function makeIterator(value:Dynamic):Iterator<Dynamic> {
-        // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L572-L584
-		#if js // don't use try/catch (very slow)
-		if(value is Array) return (value:Array<Dynamic>).iterator();
-		if(value.iterator != null) value = value.iterator();
-		#else
-		#if (cpp) if (value.iterator != null) #end
-			try value = value.iterator() catch(e:Dynamic) {};
-		#end
-		if(value.hasNext == null || value.next == null) return null;
-		return value;
-	}
-
-	private inline function makeKeyValueIterator(value:Dynamic):KeyValueIterator<Dynamic,Dynamic> {
-        //https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L586-L597
-		#if js // don't use try/catch (very slow)
-		if(value is Array) return (value:Array<Dynamic>).keyValueIterator();
-		if(value.iterator != null) value = value.keyValueIterator();
-		#else
-		try value = value.keyValueIterator() catch(e:Dynamic) {};
-		#end
-		if(value.hasNext == null || value.next == null) return null;
-		return value;
-	}
 
     private inline function whileLoop(cond:Expr, body:Expr) {
         var old:Int = store();
@@ -638,34 +613,6 @@ class Interp implements IInterp {
 
         var params:Array<Dynamic> = [for (arg in args) interpExpr(arg)];
         return Type.createInstance(classType, params);
-    }
-
-    private inline function interpMap(keys:Array<Dynamic>, values:Array<Dynamic>):Dynamic {
-        // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L655-L664
-        var isAllString:Bool = true;
-		var isAllInt:Bool = true;
-		var isAllObject:Bool = true;
-		var isAllEnum:Bool = true;
-
-		for (key in keys) {
-			isAllString = isAllString && (key is String);
-			isAllInt = isAllInt && (key is Int);
-			isAllObject = isAllObject && Reflect.isObject(key);
-			isAllEnum = isAllEnum && Reflect.isEnumValue(key);
-		}
-
-        var map:IMap<Dynamic, Dynamic> = {
-            if (isAllInt) new haxe.ds.IntMap<Dynamic>();
-			else if (isAllString) new haxe.ds.StringMap<Dynamic>();
-			else if (isAllEnum) new haxe.ds.EnumValueMap<Dynamic, Dynamic>();
-			else if (isAllObject) new haxe.ds.ObjectMap<Dynamic, Dynamic>();
-			else new haxe.ds.Map<Dynamic, Dynamic>();
-        }
-
-        for (i in 0...keys.length)
-            map.set(keys[i], values[i]);
-
-        return map;
     }
 
     private function assignExpr(left:Expr, right:Expr):Dynamic {
@@ -984,6 +931,59 @@ class StaticInterp {
 
     public static inline function callObjectField(object:Dynamic, field:Function, args:Array<Dynamic>) {
         return Reflect.callMethod(object, field, args);
+    }
+
+    public static inline function makeIterator(value:Dynamic):Iterator<Dynamic> {
+        // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L572-L584
+		#if js // don't use try/catch (very slow)
+		if(value is Array) return (value:Array<Dynamic>).iterator();
+		if(value.iterator != null) value = value.iterator();
+		#else
+		#if (cpp) if (value.iterator != null) #end
+			try value = value.iterator() catch(e:Dynamic) {};
+		#end
+		if(value.hasNext == null || value.next == null) return null;
+		return value;
+	}
+
+	public static inline function makeKeyValueIterator(value:Dynamic):KeyValueIterator<Dynamic,Dynamic> {
+        //https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L586-L597
+		#if js // don't use try/catch (very slow)
+		if(value is Array) return (value:Array<Dynamic>).keyValueIterator();
+		if(value.iterator != null) value = value.keyValueIterator();
+		#else
+		try value = value.keyValueIterator() catch(e:Dynamic) {};
+		#end
+		if(value.hasNext == null || value.next == null) return null;
+		return value;
+	}
+
+    public static inline function interpMap(keys:Array<Dynamic>, values:Array<Dynamic>):Dynamic {
+        // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L655-L664
+        var isAllString:Bool = true;
+		var isAllInt:Bool = true;
+		var isAllObject:Bool = true;
+		var isAllEnum:Bool = true;
+
+		for (key in keys) {
+			isAllString = isAllString && (key is String);
+			isAllInt = isAllInt && (key is Int);
+			isAllObject = isAllObject && Reflect.isObject(key);
+			isAllEnum = isAllEnum && Reflect.isEnumValue(key);
+		}
+
+        var map:IMap<Dynamic, Dynamic> = {
+            if (isAllInt) new haxe.ds.IntMap<Dynamic>();
+			else if (isAllString) new haxe.ds.StringMap<Dynamic>();
+			else if (isAllEnum) new haxe.ds.EnumValueMap<Dynamic, Dynamic>();
+			else if (isAllObject) new haxe.ds.ObjectMap<Dynamic, Dynamic>();
+			else new haxe.ds.Map<Dynamic, Dynamic>();
+        }
+
+        for (i in 0...keys.length)
+            map.set(keys[i], values[i]);
+
+        return map;
     }
 }
 
