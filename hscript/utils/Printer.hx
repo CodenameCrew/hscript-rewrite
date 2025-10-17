@@ -10,7 +10,7 @@ import haxe.ds.Vector;
 class Printer {
 	public static function print(e:Expr, tab:Bool = true):String {
 		var printer:Printer = new Printer(tab ? "\t" : null);
-		var output:String = printer.printExprToString(e);
+		var output:String = printer.exprToString(e);
 
 		printer = null;
 		return output;
@@ -45,7 +45,7 @@ class Printer {
 		variableNames = Vector.fromArrayCopy(info);
 	}
 
-	public function printExprToString(e:Expr) {
+	public function exprToString(e:Expr) {
 		reset();
 
 		switch (e.expr) {
