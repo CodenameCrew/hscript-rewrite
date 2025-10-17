@@ -1,5 +1,6 @@
 package;
 
+import hscript.Error;
 import hscript.utils.Printer;
 import hscript.bytecode.ByteVM;
 import hscript.bytecode.ByteInstruction;
@@ -10,14 +11,14 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('
-			if (true == false)
-				trace("banna");
-			trace(null);
-        ');
+        var expr = parser.parseString('true = false;');
 
-        var interp = new Interp("Main.hx");
-        interp.execute(expr);
+		var interp = new Interp("Main.hx");
+		interp.errorHandler = (error:Error) -> {
+			Sys.println(error);
+		}
+		interp.execute(expr);
+
 
 		var vm:ByteVM = new ByteVM();
 

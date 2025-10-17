@@ -635,7 +635,7 @@ class Interp implements IInterp {
                 if (array is IMap) StaticInterp.setMapValue(array, index, assignValue);
                 else array[index] = assignValue;
             default: 
-                error(EInvalidOp(EQ), left.line);
+                error(EInvalidOp(Left(ASSIGN)), left.line);
         }
 
         return assignValue;
@@ -699,7 +699,7 @@ class Interp implements IInterp {
                     array[index] = assignValue;
                 }
             default: 
-                error(EInvalidOp(op), left.line);
+                error(EInvalidOp(Left(op)), left.line);
         }
 
         return assignValue;

@@ -1,5 +1,10 @@
 package hscript;
 
+import hscript.utils.Printer;
+import hscript.Ast.ExprUnop;
+import hscript.Ast.ExprBinop;
+import haxe.ds.Either;
+
 class Error {
 	public var e:ErrorDef;
 	public var min:Int;
@@ -24,7 +29,10 @@ class Error {
 			case EInvalidPreprocessor(str): "Invalid preprocessor (" + str + ")";
 			case EUnknownVariable(v): "Unknown variable: "+v;
 			case EInvalidIterator(v): "Invalid iterator: "+v;
-			case EInvalidOp(op): "Invalid operator: "+op;
+			case EInvalidOp(op): "Invalid operator: " + switch (op) {
+				case Left(binop): ExprBinop.EXPR_TO_LEXER_OP.get(binop);
+				case Right(unop): ExprUnop.EXPR_TO_LEXER_UNOP.get(unop);
+			};
 			case EInvalidAccess(f): "Invalid access to field " + f;
 			case EInvalidClass(className): "Type not found " + className;
 			case ECustom(msg): msg;
@@ -41,7 +49,7 @@ enum ErrorDef {
 	EInvalidPreprocessor( msg : String );
 	EUnknownVariable( v : String );
 	EInvalidIterator( v : String );
-	EInvalidOp( op : Dynamic );
+	EInvalidOp( op : Either<ExprBinop, ExprUnop> );
 	EInvalidAccess( f : String );
 	EInvalidClass( className : String );
 	ECustom( msg : String );
