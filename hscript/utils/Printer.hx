@@ -10,7 +10,7 @@ import haxe.ds.Vector;
 class Printer {
 	public static function print(e:Expr, tab:Bool = true):String {
 		var printer:Printer = new Printer(tab ? "\t" : null);
-		var output:String = printer.exprToString(e);
+		var output:String = printer.printExprToString(e);
 
 		printer = null;
 		return output;
@@ -45,13 +45,13 @@ class Printer {
 		variableNames = Vector.fromArrayCopy(info);
 	}
 
-	public function exprToString(e:Expr) {
+	public function printExprToString(e:Expr) {
 		reset();
 
 		switch (e.expr) {
 			case EInfo(info, e):
 				loadTables(info);
-				expr(e);
+				printExpr(e);
 			default:
 		}
 		return str.toString();
@@ -84,7 +84,7 @@ class Printer {
 		}
 	}
 
-	private function expr(e:Expr) {
+	private function printExpr(e:Expr) {
 		if (e == null) {
 			add("<NULL>");
 			return;
@@ -104,96 +104,96 @@ class Printer {
 				add('var $varName');
 				if (init != null) {
 					add(" = ");
-					expr(init);
+					printExpr(init);
 				}
 			case EParent(e):
 				add("(");
-				expr(e);
+				printExpr(e);
 				add(")");
-			case EBlock(exprs):
-				if (exprs.length == 0) {
+			case EBlock(printExprs):
+				if (printExprs.length == 0) {
 					add("{}");
 					return;
 				}
 				increaseScope();
 				add("{\n");
-				for (e in exprs) {
+				for (e in printExprs) {
 					add(space);
-					expr(e);
+					printExpr(e);
 					add(";\n");
 				}
 				decreaseScope();
 				add(space);
 				add("}");
 			case EField(e, field, isSafe):
-				expr(e);
+				printExpr(e);
 				if (isSafe)
 					add("?");
 				add('.$field');
 			case EBinop(op, left, right):
-				expr(left);
+				printExpr(left);
 				add(' ${binopToString(op)} ');
-				expr(right);
+				printExpr(right);
 			case EUnop(op, isPrefix, e):
 				if (isPrefix) {
 					add(unopToString(op));
-					expr(e);
+					printExpr(e);
 					return;
 				}
-				expr(e);
+				printExpr(e);
 				add(unopToString(op));
 			case ECall(func, args):
 				if (func == null)
-					expr(func);
+					printExpr(func);
 				else
 					switch (func.expr) {
 						case EField(_), EIdent(_), EConst(_):
-							expr(func);
+							printExpr(func);
 						default:
 							add("(");
-							expr(func);
+							printExpr(func);
 							add(")");
 					}
 				add("(");
 				for (i => a in args) {
 					if (i > 0)
 						add(", ");
-					expr(a);
+					printExpr(a);
 				}
 				add(")");
 			case EIf(cond, thenExpr, elseExpr):
 				add("if (");
-				expr(cond);
+				printExpr(cond);
 				add(") ");
-				expr(thenExpr);
+				printExpr(thenExpr);
 				if (elseExpr != null) {
 					add(" else ");
-					expr(elseExpr);
+					printExpr(elseExpr);
 				}
 			case EWhile(cond, body):
 				add("while (");
-				expr(cond);
+				printExpr(cond);
 				add(") ");
-				expr(body);
+				printExpr(body);
 			case EDoWhile(cond, body):
 				add("do ");
-				expr(body);
+				printExpr(body);
 				add(" while (");
-				expr(cond);
+				printExpr(cond);
 				add(" )");
 			case EFor(v, iterator, body):
 				var varName = variableNames[v];
 				add('for ($varName in ');
-				expr(iterator);
+				printExpr(iterator);
 				add(") ");
-				expr(body);
+				printExpr(body);
 			case EForKeyValue(key, value, iterator, body):
 				var keyName = variableNames[key];
 				var valueName = variableNames[value];
 				add('for ($keyName => $valueName in ');
-				expr(iterator);
+				printExpr(iterator);
 				add(") ");
-				expr(body);
+				printExpr(body);
 			case EBreak:
 				add("break");
 			case EContinue:
@@ -215,22 +215,22 @@ class Printer {
 					add(variableNames[a.name]);
 				}
 				add(") ");
-				expr(body);
+				printExpr(body);
 			case EReturn(e):
 				add("return ");
 				if (e != null)
-					expr(e);
+					printExpr(e);
 			case EArray(e, index):
-				expr(e);
+				printExpr(e);
 				add("[");
-				expr(index);
+				printExpr(index);
 				add("]");
 			case EArrayDecl(items):
 				add("[");
 				for (i => item in items) {
 					if (i > 0)
 						add(", ");
-					expr(item);
+					printExpr(item);
 				}
 				add("]");
 			case EMapDecl(keys, values):
@@ -238,26 +238,26 @@ class Printer {
 				for (i in 0...keys.length) {
 					if (i > 0)
 						add(", ");
-					expr(keys[i]);
+					printExpr(keys[i]);
 					add(" => ");
-					expr(values[i]);
+					printExpr(values[i]);
 				}
 				add("]");
 			case ENew(className, args):
 				add('new ${variableNames[className]}(');
 				for (i => a in args) {
 					if (i > 0) add(", ");
-					expr(a);
+					printExpr(a);
 				}
 				add(")");
 			case EThrow(e):
 				add("throw ");
-				expr(e);
+				printExpr(e);
 			case ETry(e, catchVar, catchExpr):
 				add("try ");
-				expr(e);
+				printExpr(e);
 				add(' catch (${variableNames[catchVar]}) ');
-				expr(catchExpr);
+				printExpr(catchExpr);
 			case EObject(fields):
 				if (fields.length == 0) {
 					add("{}");
@@ -268,35 +268,35 @@ class Printer {
 				for (f in fields) {
 					add(space);
 					add('${f.name}:');
-					expr(f.expr);
+					printExpr(f.expr);
 					add(",\n");
 				}
 				decreaseScope();
 				add(space);
 				add("}");
 			case ETernary(cond, thenExpr, elseExpr):
-				expr(cond);
+				printExpr(cond);
 				add(" ? ");
-				expr(thenExpr);
+				printExpr(thenExpr);
 				add(" : ");
-				expr(elseExpr);
+				printExpr(elseExpr);
 			case ESwitch(e, cases, defaultExpr):
 				add("switch (");
-				expr(e);
+				printExpr(e);
 				add(") {");
 				for (c in cases) {
 					add("case ");
 					for (i => v in c.values) {
 						if (i > 0) add(", ");
-						expr(v);
+						printExpr(v);
 					}
 					add(": ");
-					expr(c.expr);
+					printExpr(c.expr);
 					add(";\n");
 				}
 				if (defaultExpr != null) {
 					add("default: ");
-					expr(defaultExpr);
+					printExpr(defaultExpr);
 					add(";\n");
 				}
 				add("}");
@@ -307,12 +307,12 @@ class Printer {
 					add("(");
 					for (i => a in args) {
 						if (i > 0) add(", ");
-						expr(a);
+						printExpr(a);
 					}
 					add(")");
 				}
 				add(" ");
-				expr(e);
+				printExpr(e);
 			case EImport(path, mode):
 				add('import $path');
 				switch (mode) {
@@ -332,10 +332,10 @@ class Printer {
 	inline private function decreaseScope() {depth--;}
 
 	inline private function binopToString(op:ExprBinop):String {
-		return cast ExprBinop.EXPR_TO_LEXER_OP.get(op);
+		return ExprBinop.EXPR_TO_LEXER_OP.get(op);
 	}
 
 	inline private function unopToString(op:ExprUnop):String {
-		return cast ExprUnop.EXPR_TO_LEXER_UNOP.get(op);
+		return ExprUnop.EXPR_TO_LEXER_UNOP.get(op);
 	}
 }
