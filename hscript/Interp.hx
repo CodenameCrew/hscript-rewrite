@@ -166,9 +166,6 @@ class Interp implements IInterp {
     }
 
     private function loadBaseVariables() {
-        variables.set("null", null);
-        variables.set("true", true);
-        variables.set("false", false);
         variables.set("trace", Reflect.makeVarArgs(function (vals:Array<Dynamic>) {
             var info:PosInfos = cast {
                 lineNumber: this.lineNumber,
@@ -926,6 +923,8 @@ class StaticInterp {
             case LCInt(int): int;
             case LCFloat(float): float;
             case LCString(string): string;
+            case LCBool(bool): bool;
+            case LCNull: null;
         }
     }
 

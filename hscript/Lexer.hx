@@ -233,6 +233,8 @@ enum LConst {
 	LCInt(int:Int);
 	LCFloat(float:Float);
 	LCString(string:String);
+    LCBool(bool:Bool);
+    LCNull;
 }
 
 /**
@@ -499,8 +501,12 @@ class Lexer {
                             if (!IDENTIFIER_CHARS_LOOKUP[charCode]) {
                                 this.charCode = charCode;
 
-                                if (LKeyword.ALL_KEYWORDS_LOOKUP.exists(id)) return LTKeyWord(id);
-                                else return LTIdentifier(id);
+                                if (LKeyword.ALL_KEYWORDS_LOOKUP.exists(id)) {
+                                    if (id == LKeyword.NULL) return LTConst(LCNull);
+                                    if (id == LKeyword.TRUE) return LTConst(LCBool(true));
+                                    if (id == LKeyword.FALSE) return LTConst(LCBool(false));
+                                    return LTKeyWord(id);
+                                } else return LTIdentifier(id);
                             }
                             id += String.fromCharCode(charCode);
                         }
