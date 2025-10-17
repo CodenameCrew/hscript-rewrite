@@ -1,21 +1,21 @@
 package hscript.bytecode;
 
+import hscript.utils.UnsafeBytesInput;
 import hscript.Interp.StaticInterp;
 import hscript.Ast.ExprUnop;
 import hscript.Ast.ExprBinop;
 import hscript.bytecode.ByteInstruction;
 import haxe.io.Bytes;
-import haxe.io.BytesInput;
 
 typedef MemoryValue = Dynamic;
 typedef Memory = Array<MemoryValue>;
 
 class ByteVMState {
 	public var stack:Array<Dynamic>;
-	public var reader:BytesInput;
+	public var reader:UnsafeBytesInput;
 
 	public function new(bytes:Bytes) {
-		reader = new BytesInput(bytes);
+		reader = new UnsafeBytesInput(bytes);
 		stack = new Array<Dynamic>();
 	}
 
@@ -30,7 +30,7 @@ class ByteVM {
 	 * The program to execute.
 	 */
 	public var bytes:Bytes;
-	private var reader:BytesInput;
+	private var reader:UnsafeBytesInput;
 
 	private var memory:Memory;
 	public var state:ByteVMState;
