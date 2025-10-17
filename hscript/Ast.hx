@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Lexer.LexerOp;
 import hscript.Lexer.LConst;
 
 #if cpp
@@ -181,51 +182,49 @@ enum abstract ExprBinop(UInt8) {
         LOOKUP_MAP;
     }
 
-    public static function binopToString(op:ExprBinop):String {
-        return switch(op) {
-            case ADD: "+";
-            case SUB: "-";
-            case MULT: "*";
-            case DIV: "/";
-            case MOD: "%";
+    public static final EXPR_TO_LEXER_OP:Map<ExprBinop, LexerOp> = [
+        ExprBinop.ADD => LexerOp.ADD,
+        ExprBinop.SUB => LexerOp.SUB,
+        ExprBinop.MULT => LexerOp.MULT,
+        ExprBinop.DIV => LexerOp.DIV,
+        ExprBinop.MOD => LexerOp.MOD,
 
-            case AND: "&";
-            case OR: "|";
-            case XOR: "^";
-            case SHL: "<<";
-            case SHR: ">>";
-            case USHR: ">>>";
+        ExprBinop.AND => LexerOp.AND,
+        ExprBinop.OR => LexerOp.OR,
+        ExprBinop.XOR => LexerOp.XOR,
+        ExprBinop.SHL => LexerOp.SHL,
+        ExprBinop.SHR => LexerOp.SHR,
+        ExprBinop.USHR => LexerOp.USHR,
 
-            case EQ: "==";
-            case NEQ: "!=";
-            case GT: ">";
-            case GTE: ">=";
-            case LT: "<";
-            case LTE: "<=";
+        ExprBinop.EQ => LexerOp.EQ,
+        ExprBinop.NEQ => LexerOp.NEQ,
+        ExprBinop.GTE => LexerOp.GTE,
+        ExprBinop.LTE => LexerOp.LTE,
+        ExprBinop.GT => LexerOp.GT,
+        ExprBinop.LT => LexerOp.LT,
 
-            case BOR: "||";
-            case BAND: "&&";
-            case IS: "is";
-            case NCOAL: "??";
+        ExprBinop.BOR => LexerOp.BOR,
+        ExprBinop.BAND => LexerOp.BAND,
+        ExprBinop.IS => LexerOp.IS,
+        ExprBinop.NCOAL => LexerOp.NCOAL,
 
-            case INTERVAL: "...";
-            case ARROW: "=>";
-            case ASSIGN: "=";
+        ExprBinop.INTERVAL => LexerOp.INTERVAL,
+        ExprBinop.ARROW => LexerOp.ARROW,
+        ExprBinop.ASSIGN => LexerOp.ASSIGN,
 
-            case ADD_ASSIGN: "+=";
-            case SUB_ASSIGN: "-=";
-            case MULT_ASSIGN: "*=";
-            case DIV_ASSIGN: "/=";
-            case MOD_ASSIGN: "%=";
-            case SHL_ASSIGN: "<<=";
-            case SHR_ASSIGN: ">>=";
-            case USHR_ASSIGN: ">>>=";
-            case OR_ASSIGN: "|=";
-            case AND_ASSIGN: "&=";
-            case XOR_ASSIGN: "^=";
-            case NCOAL_ASSIGN: "??=";
-        }
-    }
+        ExprBinop.ADD_ASSIGN => LexerOp.ADD_ASSIGN,
+        ExprBinop.SUB_ASSIGN => LexerOp.SUB_ASSIGN,
+        ExprBinop.MULT_ASSIGN => LexerOp.MULT_ASSIGN,
+        ExprBinop.DIV_ASSIGN => LexerOp.DIV_ASSIGN,
+        ExprBinop.MOD_ASSIGN => LexerOp.MOD_ASSIGN,
+        ExprBinop.SHL_ASSIGN => LexerOp.SHL_ASSIGN,
+        ExprBinop.SHR_ASSIGN => LexerOp.SHR_ASSIGN,
+        ExprBinop.USHR_ASSIGN => LexerOp.USHR_ASSIGN,
+        ExprBinop.OR_ASSIGN => LexerOp.OR_ASSIGN,
+        ExprBinop.AND_ASSIGN => LexerOp.AND_ASSIGN,
+        ExprBinop.XOR_ASSIGN => LexerOp.XOR_ASSIGN,
+        ExprBinop.NCOAL_ASSIGN => LexerOp.NCOAL_ASSIGN
+    ];
 }
 
 /**
@@ -241,15 +240,13 @@ enum abstract ExprUnop(UInt8) {
     var INC:ExprUnop; // ++
     var DEC:ExprUnop; // --
 
-    public static function unopToString(op:ExprUnop):String {
-        return switch (op) {
-            case NEG_BIT: "~";
-            case NOT: "!";
-            case NEG: "-";
-            case INC: "++";
-            case DEC: "--";
-        }
-    }
+    public static final EXPR_TO_LEXER_UNOP:Map<ExprUnop, LexerOp> = [
+        ExprUnop.NEG_BIT => LexerOp.NOT_BITWISE,
+        ExprUnop.NOT => LexerOp.NOT,
+        ExprUnop.NEG => LexerOp.SUB,
+        ExprUnop.INC => LexerOp.INCREMENT,
+        ExprUnop.DEC => LexerOp.DECREMENT
+    ];
 }
 
 enum EImportMode {

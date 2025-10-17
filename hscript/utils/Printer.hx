@@ -332,10 +332,10 @@ class Printer {
 	inline private function decreaseScope() {depth--;}
 
 	inline private function binopToString(op:ExprBinop):String {
-		return ExprBinop.binopToString(op);
+		return cast ExprBinop.EXPR_TO_LEXER_OP.get(op);
 	}
 
 	inline private function unopToString(op:ExprUnop):String {
-		return ExprUnop.unopToString(op);
+		return cast ExprUnop.EXPR_TO_LEXER_UNOP.get(op);
 	}
 }
