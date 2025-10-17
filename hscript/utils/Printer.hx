@@ -8,8 +8,12 @@ import haxe.ds.Vector;
  * Heavily based off https://github.com/HaxeFoundation/hscript/blob/master/hscript/Printer.hx
  */
 class Printer {
-	public static function toString(e:Expr, tab:Bool = true):String {
-		return new Printer(tab ? "\t" : null).exprToString(e);
+	public static function print(e:Expr, tab:Bool = true):String {
+		var printer:Printer = new Printer(tab ? "\t" : null);
+		var output:String = printer.exprToString(e);
+
+		printer = null;
+		return output;
 	}
 
 	private var str:StringBuf;
@@ -73,6 +77,10 @@ class Printer {
 					.split("\t")
 					.join("\\t"));
 				add('"');
+			case LCBool(bool):
+				add(bool);
+			case LCNull:
+				add(null);
 		}
 	}
 
@@ -154,37 +162,37 @@ class Printer {
 				}
 				add(")");
 			case EIf(cond, thenExpr, elseExpr):
-				add("if( ");
+				add("if (");
 				expr(cond);
-				add(" ) ");
+				add(") ");
 				expr(thenExpr);
 				if (elseExpr != null) {
 					add(" else ");
 					expr(elseExpr);
 				}
 			case EWhile(cond, body):
-				add("while( ");
+				add("while (");
 				expr(cond);
-				add(" ) ");
+				add(") ");
 				expr(body);
 			case EDoWhile(cond, body):
 				add("do ");
 				expr(body);
-				add(" while ( ");
+				add(" while (");
 				expr(cond);
 				add(" )");
 			case EFor(v, iterator, body):
 				var varName = variableNames[v];
-				add('for( $varName in ');
+				add('for ($varName in ');
 				expr(iterator);
-				add(" ) ");
+				add(") ");
 				expr(body);
 			case EForKeyValue(key, value, iterator, body):
 				var keyName = variableNames[key];
 				var valueName = variableNames[value];
-				add('for( $keyName => $valueName in ');
+				add('for ($keyName => $valueName in ');
 				expr(iterator);
-				add(" ) ");
+				add(") ");
 				expr(body);
 			case EBreak:
 				add("break");
@@ -248,7 +256,7 @@ class Printer {
 			case ETry(e, catchVar, catchExpr):
 				add("try ");
 				expr(e);
-				add(' catch( ${variableNames[catchVar]}) ');
+				add(' catch (${variableNames[catchVar]}) ');
 				expr(catchExpr);
 			case EObject(fields):
 				if (fields.length == 0) {
@@ -273,7 +281,7 @@ class Printer {
 				add(" : ");
 				expr(elseExpr);
 			case ESwitch(e, cases, defaultExpr):
-				add("switch( ");
+				add("switch (");
 				expr(e);
 				add(") {");
 				for (c in cases) {

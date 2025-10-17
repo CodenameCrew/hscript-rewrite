@@ -1,5 +1,6 @@
 package;
 
+import hscript.utils.Printer;
 import hscript.bytecode.ByteVM;
 import hscript.bytecode.ByteInstruction;
 import haxe.io.BytesOutput;
@@ -28,5 +29,6 @@ class Main {
 		vm.execute();
 
 		trace(vm.stack[0]);
+		trace(Printer.print(expr));
     }
 }
