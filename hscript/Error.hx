@@ -1,6 +1,5 @@
 package hscript;
 
-import hscript.utils.Printer;
 import hscript.Ast.ExprUnop;
 import hscript.Ast.ExprBinop;
 import haxe.ds.Either;

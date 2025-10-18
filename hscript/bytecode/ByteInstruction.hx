@@ -42,6 +42,13 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var PUSH_STRING16:ByteInstruction;
 
 	/**
+	 * FOLLOWED BY 32 + LEN BYTES -
+	 * LEN: Defined by the first byte as a Int
+	 * Pushes the following bytes encoded as a String to the top of the stack.
+	 */
+	var PUSH_STRING32:ByteInstruction;
+
+	/**
 	 * FOLLOWED BY 0 BYTES -
 	 * Pushes a null to the top of the stack
 	 */
@@ -150,6 +157,13 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var PUSH_MEMORY16:ByteInstruction;
 
 	/**
+	 * FOLLOWED BY 32 BYTES -
+	 * INDX: following bytes encoded as a Int.
+	 * Pushes memory[INDX] to the top of the stack.
+	 */
+	var PUSH_MEMORY32:ByteInstruction;
+
+	/**
 	 * FOLLOWED BY 8 BYTES -
 	 * INDX: following bytes encoded as a Int8.
 	 * Saves the top of the stack to memory[INDX], popping it in the process.
@@ -162,6 +176,13 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	  * Saves the top of the stack to memory[INDX], popping it in the process.
 	  */
 	var SAVE_MEMORY16:ByteInstruction;
+
+	/**
+	  * FOLLOWED BY 32 BYTES -
+	  * INDX: following bytes encoded as a Int.
+	  * Saves the top of the stack to memory[INDX], popping it in the process.
+	  */
+	var SAVE_MEMORY32:ByteInstruction;
 
 	/**
 	 * FOLLOWED BY 8 BYTES -
@@ -178,6 +199,13 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var SAVE_MEMORY16_PUBLIC:ByteInstruction;
 
 	/**
+	  * FOLLOWED BY 32 BYTES -
+	  * INDX: following bytes encoded as a Int.
+	  * Saves the top of the stack to publicVariables[INDX], popping it in the process.
+	  */
+	var SAVE_MEMORY32_PUBLIC:ByteInstruction;
+
+	/**
 	 * FOLLOWED BY 8 BYTES -
 	 * INDX: following bytes encoded as a Int8.
 	 * Saves the top of the stack to staticVariables[INDX], popping it in the process.
@@ -192,25 +220,32 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var SAVE_MEMORY16_STATIC:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 16 BYTES -
-	 * INDX: following bytes encoded as a Int16.
+	  * FOLLOWED BY 32 BYTES -
+	  * INDX: following bytes encoded as a Int.
+	  * Saves the top of the stack to staticVariables[INDX], popping it in the process.
+	  */
+	var SAVE_MEMORY32_STATIC:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 32 BYTES -
+	 * INDX: following bytes encoded as a Int.
 	 * Moves the byte pointer to INDX.
 	 */
-	var GOTO16:ByteInstruction;
+	var GOTO:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 16 BYTES -
-	 * INDX: following bytes encoded as a Int16.
+	 * FOLLOWED BY 32 BYTES -
+	 * INDX: following bytes encoded as a Int.
 	 * Moves the byte pointer to INDX if stack[stacktop] == true.
 	 */
-	var GOTOIF16:ByteInstruction;
+	var GOTOIF:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 16 BYTES -
-	 * INDX: following bytes encoded as a Int16.
+	 * FOLLOWED BY 32 BYTES -
+	 * INDX: following bytes encoded as a Int.
 	 * Moves the byte pointer to INDX if stack[stacktop] == false.
 	 */
-	var GOTOIFNOT16:ByteInstruction;
+	var GOTOIFNOT:ByteInstruction;
 
 	/**
 	 * FOLLOWED BY 0 BYTES -

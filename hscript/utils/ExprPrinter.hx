@@ -7,15 +7,7 @@ import haxe.ds.Vector;
 /**
  * Heavily based off https://github.com/HaxeFoundation/hscript/blob/master/hscript/Printer.hx
  */
-class Printer {
-	public static function print(e:Expr, tab:Bool = true):String {
-		var printer:Printer = new Printer(tab ? "\t" : null);
-		var output:String = printer.exprToString(e);
-
-		printer = null;
-		return output;
-	}
-
+class ExprPrinter {
 	private var str:StringBuf;
 	private var depth:Int = 0;
 	private var spaceChar:String = null;
@@ -331,11 +323,11 @@ class Printer {
 
 	inline private function decreaseScope() {depth--;}
 
-	inline private function binopToString(op:ExprBinop):String {
+	public static inline function binopToString(op:ExprBinop):String {
 		return ExprBinop.EXPR_TO_LEXER_OP.get(op);
 	}
 
-	inline private function unopToString(op:ExprUnop):String {
+	public static inline function unopToString(op:ExprUnop):String {
 		return ExprUnop.EXPR_TO_LEXER_UNOP.get(op);
 	}
 }

@@ -81,6 +81,12 @@ class ExprUtils {
         }
     }
 
+    /**
+     * Helper to remap a Expr.
+     * @param expr 
+     * @param iter Return the new Expr.
+     * @return Expr
+     */
     public static function map(expr:Expr, iter:Expr->Expr):Expr { 
         return new Expr(switch (expr.expr) {
             case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) iter(init) else null, isPublic, isStatic);
@@ -117,4 +123,18 @@ class ExprUtils {
             case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): expr.expr; 
         }, expr.line);
     }
+
+    /**
+     * Print a Expr in a script format.
+     * @param e 
+     * @param pretty 
+     * @return String
+     */
+    public static function print(e:Expr, pretty:Bool = true):String {
+		var printer:ExprPrinter = new ExprPrinter(pretty ? "\t" : null);
+		var output:String = printer.exprToString(e);
+
+		printer = null;
+		return output;
+	}
 }

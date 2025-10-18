@@ -1,5 +1,7 @@
 package hscript.bytecode;
 
+import haxe.io.Bytes;
+import haxe.ds.Vector;
 import hscript.Ast;
 import haxe.io.BytesOutput;
 import hscript.bytecode.ByteInstruction;
@@ -24,9 +26,20 @@ class ByteCompilier {
         buffer = new BytesOutput();
     }
 
+	private var variableNames:Vector<String>;
+    private function loadTables(info:VariableInfo) {
+		variableNames = Vector.fromArrayCopy(info);
+	}
+
     public function compile(expr:Expr) {
         switch (expr.expr) {
-            case EInfo(info, expr): compile(expr);
+            case EInfo(info, expr): 
+                loadTables(info);
+
+                compile(expr);
+
+                writePointers();
+                buffer.writeInt8(RETURN);
             case EIdent(name):
                 switch (shrink(name)) {
                     case BIInt8(_):
@@ -35,8 +48,9 @@ class ByteCompilier {
                     case BIInt16(_):
                         buffer.writeInt8(PUSH_MEMORY16);
                         buffer.writeInt16(name);
-                    default: // TODO: ERROR HANDLING
-                        buffer.writeInt8(PUSH_NULL);
+                    case BIInt32(_):
+                        buffer.writeInt8(PUSH_MEMORY32);
+                        buffer.writeInt32(name);
                 }
             case EConst(c):
                 switch (c) {
@@ -71,18 +85,17 @@ class ByteCompilier {
                         else {
                             switch (shrink(string.length)) {
                                 case BIInt8(_):
-                                    buffer.writeInt8(PUSH_INT8);
+                                    buffer.writeInt8(PUSH_STRING8);
                                     buffer.writeInt8(string.length);
                                     buffer.writeString(string);
                                 case BIInt16(_):
                                     buffer.writeInt8(PUSH_STRING16);
                                     buffer.writeInt16(string.length);
                                     buffer.writeString(string);
-                                default: // TODO: ERROR HANDLING
-                                    final message:String = "STRING LEN > INT16 BOUNDS";
-                                    buffer.writeInt8(PUSH_STRING8);
-                                    buffer.writeInt8(message.length);
-                                    buffer.writeString(message);
+                                default:
+                                    buffer.writeInt8(PUSH_STRING32);
+                                    buffer.writeInt32(string.length);
+                                    buffer.writeString(string);
                             }
                         }
                     case LCBool(bool):
@@ -144,7 +157,12 @@ class ByteCompilier {
                         else buffer.writeInt8(SAVE_MEMORY16);
 
                         buffer.writeInt16(name);
-                    case BIInt32(_): buffer.writeInt8(POP); // TODO: ERROR HANDLING
+                    case BIInt32(_): 
+                        if (isStatic) buffer.writeInt8(SAVE_MEMORY32_STATIC); 
+                        else if (isPublic) buffer.writeInt8(SAVE_MEMORY32_PUBLIC); 
+                        else buffer.writeInt8(SAVE_MEMORY32);
+
+                        buffer.writeInt32(name);
                 }
             case EIf(cond, thenExpr, elseExpr) | ETernary(cond, thenExpr, elseExpr):
                 var endPointer:BInstructionPointer = pointer();
@@ -152,11 +170,11 @@ class ByteCompilier {
 
                 compile(cond);
 
-                jump(elseExpr == null ? endPointer : elsePointer, GOTOIFNOT16);
+                jump(elseExpr == null ? endPointer : elsePointer, GOTOIFNOT);
                 compile(thenExpr);
 
                 if (elseExpr != null) {
-                    jump(endPointer, GOTO16);
+                    jump(endPointer, GOTO);
 
                     bake(elsePointer);
                     compile(elseExpr);
@@ -226,11 +244,14 @@ class ByteCompilier {
         }
     }
 
+    private var pointers:Array<BInstructionPointer> = [];
     /**
      * Generates a pointer object that will be compiled later to point to the pointer's bufferPos with a GOTO16
      */
     private inline function pointer():BInstructionPointer {
-        return new BInstructionPointer();
+        var pointer:BInstructionPointer = new BInstructionPointer();
+        pointers.push(pointer);
+        return pointer;
     }
 
     /**
@@ -248,7 +269,19 @@ class ByteCompilier {
     private inline function jump(pointer:BInstructionPointer, jumpCode:ByteInstruction) {
         buffer.writeInt8(jumpCode);
         pointer.temps.push(buffer.length);
-        buffer.writeInt16(0);
+        buffer.writeInt32(0);
+    }
+
+    private function writePointers() {
+        var bytes:Bytes = buffer.getBytes();
+        
+        for (pointer in pointers)
+            for (temp in pointer.temps) 
+                bytes.setInt32(temp, pointer.position);
+        
+        var newBuffer:BytesOutput = new BytesOutput();
+        newBuffer.write(bytes);
+        buffer = newBuffer;
     }
 
     private static inline function shrink(int:Int):BIntSize {

@@ -159,7 +159,7 @@ class ByteVM {
 				var index:Int = reader.readInt16();
 				memory[index] = stack.pop();
 
-			case ByteInstruction.GOTO16:
+			case ByteInstruction.GOTO:
 				var pos = reader.readInt16();
 				reader.position = pos;
 

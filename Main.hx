@@ -1,40 +1,30 @@
 package;
 
+import haxe.io.Bytes;
+import hscript.utils.ExprUtils;
+import hscript.utils.BytesPrinter;
 import hscript.bytecode.ByteCompilier;
 import hscript.Error;
-import hscript.utils.Printer;
-import hscript.bytecode.ByteVM;
-import hscript.bytecode.ByteInstruction;
-import haxe.io.BytesOutput;
 import hscript.Interp;
 import hscript.Parser;
 
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('if (true) trace("Hello World!");');
+        var expr = parser.parseString('if (3 > 4 + 3) trace("Hello World!");');
 
 		var interp = new Interp("Main.hx");
-		interp.errorHandler = (error:Error) -> {
-			Sys.println(error);
-		}
+		interp.errorHandler = (error:Error) -> {Sys.println(error);}
 		interp.execute(expr);
 
-
-		var vm:ByteVM = new ByteVM();
-
-		var pushint8:BytesOutput = new BytesOutput();
-		pushint8.writeByte(ByteInstruction.PUSH_INT8);
-		pushint8.writeInt8(-100);
-
-		vm.load(pushint8.getBytes());
-		vm.execute();
-
-		trace(vm.stack[0]);
-		trace(Printer.print(expr));
+		trace(ExprUtils.print(expr));
 
 		var comp:ByteCompilier = new ByteCompilier();
 		comp.compile(expr);
-		trace(comp.buffer.getBytes().toHex());
+
+		var byteCode:Bytes = comp.buffer.getBytes();
+		trace(byteCode.toHex());
+
+		Sys.println(BytesPrinter.print(byteCode));
     }
 }
