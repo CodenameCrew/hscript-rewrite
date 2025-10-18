@@ -203,8 +203,7 @@ class Interp implements IInterp {
                 return null;
             case EBinop(op, left, right): 
                 switch (op) {
-                    case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | 
-                        SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN: assignExprOp(op, left, right);
+                    case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN: assignExprOp(op, left, right);
                     case ASSIGN: assignExpr(left, right);
 
                     case ADD: return interpExpr(left) + interpExpr(right);

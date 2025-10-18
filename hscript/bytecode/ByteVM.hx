@@ -81,10 +81,6 @@ class ByteVM {
 			case ByteInstruction.PUSH_STRING16:
 				var len = reader.readInt16();
 				stack.push(reader.readString(len));
-			case ByteInstruction.PUSH_STRING32:
-				var len = reader.readInt32();
-				stack.push(reader.readString(len));
-
 			case ByteInstruction.PUSH_NULL:
 				stack.push(null);
 			case ByteInstruction.PUSH_TRUE:
@@ -110,10 +106,6 @@ class ByteVM {
 				var left:Dynamic = stack.pop();
 
                 switch (op) {
-                    case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | 
-                        SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN: // assignExprOp(op, left, right);
-                    case ASSIGN: // assignExpr(left, right);
-
                     case ADD: stack.push(left + right);
                     case SUB: stack.push(left - right);
                     case MULT: stack.push(left * right);
@@ -140,18 +132,17 @@ class ByteVM {
                     case NCOAL: stack.push(left ?? right);
 
                     case INTERVAL: stack.push(new IntIterator(left, right));
-                    case ARROW: stack.push(null);
+					default:
                 }
 
 			case ByteInstruction.UNOP:
                 var unop:ExprUnop = cast reader.readInt8();
                 var top:Dynamic = stack.pop();
                 switch (unop) {
-                    case INC: stack.push(top++);
-                    case DEC: stack.push(top--);
                     case NOT: stack.push(!top);
                     case NEG: stack.push(-top);
                     case NEG_BIT: stack.push(~top);
+					default:
                 }
 
 			case ByteInstruction.PUSH_MEMORY8:
@@ -160,9 +151,6 @@ class ByteVM {
 			case ByteInstruction.PUSH_MEMORY16:
 				var index:Int = reader.readInt16();
 				stack.push(memory[index]);
-			case ByteInstruction.PUSH_MEMORY24:
-				var index:Int = reader.readInt24();
-				stack.push(memory[index]);
 
 			case ByteInstruction.SAVE_MEMORY8:
 				var index:Int = reader.readInt8();
@@ -170,18 +158,9 @@ class ByteVM {
 			case ByteInstruction.SAVE_MEMORY16:
 				var index:Int = reader.readInt16();
 				memory[index] = stack.pop();
-			case ByteInstruction.SAVE_MEMORY24:
-				var index:Int = reader.readInt24();
-				memory[index] = stack.pop();
 
-			case ByteInstruction.GOTO8:
-				var pos = reader.readInt8();
-				reader.position = pos;
 			case ByteInstruction.GOTO16:
 				var pos = reader.readInt16();
-				reader.position = pos;
-			case ByteInstruction.GOTO32:
-				var pos = reader.readInt32();
 				reader.position = pos;
 
 			case ByteInstruction.CALL:

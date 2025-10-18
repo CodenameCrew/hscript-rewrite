@@ -1,5 +1,6 @@
 package;
 
+import hscript.bytecode.ByteCompilier;
 import hscript.Error;
 import hscript.utils.Printer;
 import hscript.bytecode.ByteVM;
@@ -11,7 +12,7 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('true = false;');
+        var expr = parser.parseString('if (true) trace("Hello World!");');
 
 		var interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {
@@ -31,5 +32,9 @@ class Main {
 
 		trace(vm.stack[0]);
 		trace(Printer.print(expr));
+
+		var comp:ByteCompilier = new ByteCompilier();
+		comp.compile(expr);
+		trace(comp.buffer.getBytes().toHex());
     }
 }
