@@ -33,6 +33,7 @@ class BytesPrinter {
             }
         } catch (e:Eof) {}
 
+        str.add('\n' + '${hex(input.position,4)}: ' + "BYTES END");
         return str.toString();
     }
 

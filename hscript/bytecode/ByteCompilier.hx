@@ -35,10 +35,8 @@ class ByteCompilier {
         try {
             startWrite(expr);
             return buffer.getBytes();
-        } catch (e) {
-            trace(e);
+        } catch (e)
             return null;
-        }
     }
 
     public function startWrite(expr:Expr) {
@@ -49,15 +47,13 @@ class ByteCompilier {
 
         bake(endPointer);
         unreturn();
+
+        writePointers();
     }
 
     public function write(expr:Expr) {
         switch (expr.expr) {
-            case EInfo(info, expr): 
-                write(expr);
-
-                writePointers();
-                buffer.writeInt8(RETURN);
+            case EInfo(info, expr): write(expr);
             case EIdent(name):
                 switch (shrink(name)) {
                     case BIInt8(_):
