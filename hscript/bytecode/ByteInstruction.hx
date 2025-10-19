@@ -86,6 +86,12 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
+	 * Pushes a new haxe.ds.Map<Dynamic, Dynamic>() to the top of the stack.
+	 */
+	var PUSH_MAP:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
 	 * Pushes a false to the top of the stack
 	 */
 	var PUSH_OBJECT:ByteInstruction;
@@ -319,14 +325,52 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var ARRAY_STACK8:ByteInstruction;
 
 	/**
+	 * FOLLOWED BY 16 BYTES -
+	 * LEN: Defined by the first bytes as a Int16
+	 * Creates a array from stack[stackTop-LEN] to stack[stackTop] and pushes it to top (popping all values in the process)
+	 */
+	var ARRAY_STACK16:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 32 BYTES -
+	 * LEN: Defined by the first bytes as a Int
+	 * Creates a array from stack[stackTop-LEN] to stack[stackTop] and pushes it to top (popping all values in the process)
+	 */
+	var ARRAY_STACK32:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Creates a map with stack[stackTop-1] (keys) and stack[stackTop] (values).
+	 */
+	var MAP_STACK:ByteInstruction;
+
+	/**
 	 * FOLLOWED BY 0 BYTES -
 	 * Pops top value of the stack.
 	**/
 	var POP:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 0 BYTES -
-	 * Returns a value from the stack.
+	 * FOLLOWED BY 40 BYTES -
+	 * A GOTO / GOTOIF / GOTOIFNOT as a Int8.
+	 * INDX: following bytes encoded as a Int.
+	 * Lets the runtime know the next GOTO instruction is a break;
+	**/
+	var BREAK:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 40 BYTES -
+	 * A GOTO / GOTOIF / GOTOIFNOT as a Int8.
+	 * INDX: following bytes encoded as a Int.
+	 * Lets the runtime know the next GOTO instruction is a continue;
+	**/
+	var CONTINUE:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 40 BYTES -
+	 * A GOTO / GOTOIF / GOTOIFNOT as a Int8.
+	 * INDX: following bytes encoded as a Int.
+	 * Lets the runtime know the next GOTO instruction is a return;
 	**/
 	var RETURN:ByteInstruction;
 }

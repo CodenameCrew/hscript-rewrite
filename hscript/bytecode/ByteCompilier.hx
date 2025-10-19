@@ -108,8 +108,7 @@ class ByteCompilier {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN:
                         switch (left.expr) {
                             case EIdent(_) | EField(_) | EArray(_): compile(left);
-                            default:
-                                buffer.writeInt8(PUSH_NULL); // TODO: ERROR HANDLING
+                            default: buffer.writeInt8(PUSH_NULL); // TODO: ERROR HANDLING
                         }
 
                         compile(right);
@@ -204,15 +203,95 @@ class ByteCompilier {
                 }
             case ECall(func, args):
                 compile(func);
-                for (arg in args) compile(arg);
-
-                buffer.writeInt8(ARRAY_STACK8);
-                switch (shrink(args.length)) {
-                    case BIInt8(_): buffer.writeInt8(args.length);
-                    default: for (i in 0...args.length+1) buffer.writeInt8(POP); // TODO: ERROR HANDLING
-                }
+                array(args);
                 buffer.writeInt8(CALL);
+            case EWhile(cond, body):
+                var endPointer:BInstructionPointer = pointer();
+                var condPointer:BInstructionPointer = pointer();
+                
+                setbreak(endPointer);
+                setcontinue(condPointer);
+
+                bake(condPointer);
+                compile(cond);
+
+                jump(endPointer, GOTOIFNOT);
+                compile(body);
+                jump(condPointer, GOTO);
+                bake(endPointer);
+
+                unbreak();
+                uncontinue();
+            case EDoWhile(cond, body):
+                var bodyPointer:BInstructionPointer = pointer();
+                var endPointer:BInstructionPointer = pointer();
+
+                setbreak(endPointer);
+                setcontinue(bodyPointer);
+
+                bake(bodyPointer);
+                compile(body);
+
+                compile(cond);
+                jump(bodyPointer, GOTOIF);
+                bake(endPointer);
+
+                unbreak();
+                uncontinue();
+            case EArrayDecl(items): array(items);
+            case EMapDecl(keys, values):
+                if (keys.length == 0 && values.length == 0)
+                    buffer.writeInt8(PUSH_MAP);
+                else {
+                    array(keys);
+                    array(values);
+
+                    buffer.writeInt8(MAP_STACK);
+                }
+            case ENew(className, args):
+                compile(new Expr(EIdent(className), expr.line));
+                array(args);
+
+                buffer.writeInt8(NEW);
+            case EBreak:
+                var breakPointer:BInstructionPointer = getbreak();
+                if (breakPointer != null) {
+                    buffer.writeInt8(BREAK);
+                    jump(breakPointer, GOTO);
+                }
+            case EContinue:
+                var continuePointer:BInstructionPointer = getcontinue();
+                if (continuePointer != null) {
+                    buffer.writeInt8(CONTINUE);
+                    jump(continuePointer, GOTO);
+                }
+            case EReturn(expr):
+                var returnPointer:BInstructionPointer = getreturn();
+                if (returnPointer != null) {
+                    buffer.writeInt8(RETURN);
+                    jump(returnPointer, GOTO);
+                }
             default:
+        }
+    }
+
+    private inline function array(arr:Array<Expr>) {
+        if (arr.length == 0)
+            buffer.writeInt8(PUSH_ARRAY);
+        else {
+            for (i in arr) compile(i);
+
+            switch (shrink(arr.length)) {
+                case BIInt8(_): 
+                    buffer.writeInt8(ARRAY_STACK8);
+                    buffer.writeInt8(arr.length);
+                case BIInt16(_):
+                    buffer.writeInt8(ARRAY_STACK16);
+                    buffer.writeInt16(arr.length);
+                case BIInt32(_):
+                    buffer.writeInt8(ARRAY_STACK32);
+                    buffer.writeInt32(arr.length);
+            }
         }
     }
 
@@ -243,6 +322,29 @@ class ByteCompilier {
                 buffer.writeInt8(POP); // restore stack
         }
     }
+
+    /**
+     * Static implementation of interpLoop(expr) in Interp.hx
+     * Stores pointers for expressions that need it.
+     */
+    private var breakPointers:Array<BInstructionPointer> = [];
+    private var continuePointers:Array<BInstructionPointer> = [];
+    private var returnPointers:Array<BInstructionPointer> = [];
+
+    private inline function getbreak():Null<BInstructionPointer>
+        return (breakPointers.length > 0) ? breakPointers[breakPointers.length-1] : null;
+    private inline function setbreak(pointer:BInstructionPointer) breakPointers.push(pointer);
+    private inline function unbreak() breakPointers.pop();
+
+    private inline function getcontinue():Null<BInstructionPointer>
+        return (continuePointers.length > 0) ? continuePointers[continuePointers.length-1] : null;
+    private inline function setcontinue(pointer:BInstructionPointer) continuePointers.push(pointer);
+    private inline function uncontinue() continuePointers.pop();
+
+    private inline function getreturn():Null<BInstructionPointer> 
+        return (returnPointers.length > 0) ? returnPointers[returnPointers.length-1] : null;
+    private inline function setreturn(pointer:BInstructionPointer) returnPointers.push(pointer);
+    private inline function unreturn() returnPointers.pop();
 
     private var pointers:Array<BInstructionPointer> = [];
     /**

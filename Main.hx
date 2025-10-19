@@ -11,7 +11,7 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('if (3 > 4 + 3) trace("Hello World!");');
+        var expr = parser.parseString('while (i < 3) {trace("Hello World!", i); i++;}');
 
 		var interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

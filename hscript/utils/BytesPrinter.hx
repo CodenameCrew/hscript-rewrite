@@ -61,6 +61,7 @@ class BytesPrinter {
             case PUSH_EMPTY_STRING: "PUSH_EMPTY_STRING";
             case PUSH_SPACE_STRING: "PUSH_SPACE_STRING";
             case PUSH_ARRAY: "PUSH_ARRAY";
+            case PUSH_MAP: "PUSH_MAP";
             case PUSH_OBJECT: "PUSH_OBJECT";
             case PUSH_ZERO: "PUSH_ZERO";
             case PUSH_POSITIVE_ONE: "PUSH_POSITIVE_ONE";
@@ -102,11 +103,15 @@ class BytesPrinter {
             case ARRAY_GET: "ARRAY_GET";
             case ARRAY_SET: "ARRAY_SET";
 
-            case ARRAY_STACK8:
-                var len = input.readInt8();
-                'ARRAY_STACK8 len=' + len;
+            case ARRAY_STACK8: 'ARRAY_STACK8 len=' + input.readInt8();
+            case ARRAY_STACK16: 'ARRAY_STACK16 len=' + input.readInt16();
+            case ARRAY_STACK32: 'ARRAY_STACK32 len=' + input.readInt32();
+
+            case MAP_STACK: 'MAP_STACK';
 
             case POP: "POP";
+            case BREAK: "BREAK";
+            case CONTINUE: "CONTINUE";
             case RETURN: "RETURN";
         }
     }
