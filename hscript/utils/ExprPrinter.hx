@@ -99,9 +99,7 @@ class ExprPrinter {
 					printExpr(init);
 				}
 			case EParent(e):
-				add("(");
 				printExpr(e);
-				add(")");
 			case EBlock(printExprs):
 				if (printExprs.length == 0) {
 					add("{}");

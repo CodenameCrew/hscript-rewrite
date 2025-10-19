@@ -11,13 +11,13 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('while (i < 3) {trace("Hello World!", i); i++;}');
+        var expr = parser.parseString('var i = 0; while (i < 3) {trace("Hello World!", i); i++;}');
 
 		var interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}
-		interp.execute(expr);
+		// interp.execute(expr);
 
-		trace(ExprUtils.print(expr));
+		trace(ExprUtils.print(expr, true));
 
 		var comp:ByteCompilier = new ByteCompilier();
 		var byteCode:Bytes = comp.compile(expr);
