@@ -115,6 +115,8 @@ class BytesPrinter {
             case BREAK: "BREAK";
             case CONTINUE: "CONTINUE";
             case RETURN: "RETURN";
+
+            case ERROR: "ERROR code=" + input.readInt8();
         }
     }
 

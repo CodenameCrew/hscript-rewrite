@@ -33,13 +33,13 @@ class ByteCompilier {
 
     public function compile(expr:Expr):Bytes {
         try {
-            startWrite(expr);
+            start(expr);
             return buffer.getBytes();
         } catch (e)
             return null;
     }
 
-    public function startWrite(expr:Expr) {
+    public function start(expr:Expr) {
         var endPointer:BInstructionPointer = pointer();
         setreturn(endPointer);
 
@@ -122,7 +122,11 @@ class ByteCompilier {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN:
                         switch (left.expr) {
                             case EIdent(_) | EField(_) | EArray(_): write(left);
-                            default: buffer.writeInt8(PUSH_NULL); // TODO: ERROR HANDLING
+                            default:
+                                buffer.writeInt8(ERROR);
+                                buffer.writeInt8(INVALID_ASSIGN);
+
+                                return;
                         }
 
                         write(right);
@@ -187,7 +191,7 @@ class ByteCompilier {
                 write(thenExpr);
 
                 if (elseExpr != null) {
-                    jump(endPointer, GOTO);
+                    jump(endPointer);
 
                     bake(elsePointer);
                     write(elseExpr);
@@ -231,7 +235,7 @@ class ByteCompilier {
 
                 jump(endPointer, GOTOIFNOT);
                 write(body);
-                jump(condPointer, GOTO);
+                jump(condPointer);
                 bake(endPointer);
 
                 unbreak();
@@ -271,19 +275,25 @@ class ByteCompilier {
                 var breakPointer:BInstructionPointer = getbreak();
                 if (breakPointer != null) {
                     buffer.writeInt8(BREAK);
-                    jump(breakPointer, GOTO);
+                    jump(breakPointer);
+                } else {
+                    buffer.writeInt8(ERROR);
+                    buffer.writeInt8(INVALID_BREAK);
                 }
             case EContinue:
                 var continuePointer:BInstructionPointer = getcontinue();
                 if (continuePointer != null) {
                     buffer.writeInt8(CONTINUE);
-                    jump(continuePointer, GOTO);
+                    jump(continuePointer);
+                } else {
+                    buffer.writeInt8(ERROR);
+                    buffer.writeInt8(INVALID_CONTINUE);
                 }
             case EReturn(expr):
                 var returnPointer:BInstructionPointer = getreturn();
                 if (returnPointer != null) {
                     buffer.writeInt8(RETURN);
-                    jump(returnPointer, GOTO);
+                    jump(returnPointer);
                 }
             case EObject(fields):
                 buffer.writeInt8(PUSH_OBJECT);
@@ -340,6 +350,9 @@ class ByteCompilier {
 
                 buffer.writeInt8(ARRAY_SET);
             default: 
+                buffer.writeInt8(ERROR);
+                buffer.writeInt8(INVALID_ASSIGN);
+
                 buffer.writeInt8(POP); // restore stack
         }
     }
@@ -369,7 +382,7 @@ class ByteCompilier {
 
     private var pointers:Array<BInstructionPointer> = [];
     /**
-     * Generates a pointer object that will be compiled later to point to the pointer's bufferPos with a GOTO16
+     * Generates a pointer object that will be compiled later to point to the pointer's bufferPos with a GOTO
      */
     private inline function pointer():BInstructionPointer {
         var pointer:BInstructionPointer = new BInstructionPointer();
@@ -389,7 +402,7 @@ class ByteCompilier {
      * Jump to a pointer!
      * @param pointer 
      */
-    private inline function jump(pointer:BInstructionPointer, jumpCode:ByteInstruction) {
+    private inline function jump(pointer:BInstructionPointer, jumpCode:ByteInstruction = GOTO) {
         buffer.writeInt8(jumpCode);
         pointer.temps.push(buffer.length);
         buffer.writeInt32(0);

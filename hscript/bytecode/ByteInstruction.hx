@@ -381,4 +381,28 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	 * Lets the runtime know the next GOTO instruction is a return;
 	**/
 	var RETURN:ByteInstruction;
+	
+	/**
+	 * FOLLOWED BY 8 BYTES -
+	 * CODE: following bytes encoded as a Int8 (USE ByteRuntimeError).
+	 * Throw a runtime error with the error specified under CODE in ByteRuntimeError;
+	 */
+	var ERROR:ByteInstruction;
+}
+
+enum abstract ByteRuntimeError(ByteInt) from ByteInt from Int to ByteInt to Int {
+	/**
+	 * Throws a hscript error: EInvalidOp(Left(ASSIGN)).
+	 */
+	var INVALID_ASSIGN:ByteRuntimeError = 0x00;
+
+	/**
+	 * Throws a hscript error: ECustom("Invalid break").
+	 */
+	var INVALID_BREAK:ByteRuntimeError;
+
+	/**
+	 * Throws a hscript error: ECustom("Invalid continue").
+	 */
+	var INVALID_CONTINUE:ByteRuntimeError;
 }
