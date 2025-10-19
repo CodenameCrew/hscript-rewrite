@@ -318,6 +318,14 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var ARRAY_SET:ByteInstruction;
 
 	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Sets field of object to value (NON DESTRUCTIVE).
+	 * Differs from FIELD_SET / FIELD_SET_SAFE as it leaves the object in the stack[stackTop].
+	 * Stack [..., object, field, value]
+	 */
+	var OBJECT_SET:ByteInstruction;
+
+	/**
 	 * FOLLOWED BY 8 BYTES -
 	 * LEN: Defined by the first bytes as a Int8
 	 * Creates a array from stack[stackTop-LEN] to stack[stackTop] and pushes it to top (popping all values in the process)

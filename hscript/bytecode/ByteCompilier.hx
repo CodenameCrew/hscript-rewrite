@@ -31,12 +31,30 @@ class ByteCompilier {
 		variableNames = Vector.fromArrayCopy(info);
 	}
 
-    public function compile(expr:Expr) {
+    public function compile(expr:Expr):Bytes {
+        try {
+            startWrite(expr);
+            return buffer.getBytes();
+        } catch (e) {
+            trace(e);
+            return null;
+        }
+    }
+
+    public function startWrite(expr:Expr) {
+        var endPointer:BInstructionPointer = pointer();
+        setreturn(endPointer);
+
+        write(expr);
+
+        bake(endPointer);
+        unreturn();
+    }
+
+    public function write(expr:Expr) {
         switch (expr.expr) {
             case EInfo(info, expr): 
-                loadTables(info);
-
-                compile(expr);
+                write(expr);
 
                 writePointers();
                 buffer.writeInt8(RETURN);
@@ -107,11 +125,11 @@ class ByteCompilier {
                 switch (op) {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN:
                         switch (left.expr) {
-                            case EIdent(_) | EField(_) | EArray(_): compile(left);
+                            case EIdent(_) | EField(_) | EArray(_): write(left);
                             default: buffer.writeInt8(PUSH_NULL); // TODO: ERROR HANDLING
                         }
 
-                        compile(right);
+                        write(right);
 
                         buffer.writeInt8(BINOP);
                         buffer.writeInt8(cast switch (op) {
@@ -131,16 +149,16 @@ class ByteCompilier {
 
                         assign(left);
                     case ASSIGN:
-                        compile(right); // push right to stack
+                        write(right); // push right to stack
                         assign(left);
                     default:
-                        compile(left);
-                        compile(right);
+                        write(left);
+                        write(right);
                         buffer.writeInt8(BINOP);
                         buffer.writeInt8(cast op);
                 }
             case EVar(name, init, isPublic, isStatic):
-                if (init != null) compile(init);
+                if (init != null) write(init);
                 else buffer.writeInt8(PUSH_NULL);
 
                 switch (shrink(name)) {
@@ -167,42 +185,42 @@ class ByteCompilier {
                 var endPointer:BInstructionPointer = pointer();
                 var elsePointer:BInstructionPointer = pointer();
 
-                compile(cond);
+                write(cond);
 
                 jump(elseExpr == null ? endPointer : elsePointer, GOTOIFNOT);
-                compile(thenExpr);
+                write(thenExpr);
 
                 if (elseExpr != null) {
                     jump(endPointer, GOTO);
 
                     bake(elsePointer);
-                    compile(elseExpr);
+                    write(elseExpr);
                 }
 
                 bake(endPointer);
-            case EParent(expr): compile(expr);
-            case EBlock(exprs): for (expr in exprs) compile(expr);
+            case EParent(expr): write(expr);
+            case EBlock(exprs): for (expr in exprs) write(expr);
             case EField(expr, field, isSafe):
-                compile(expr); // object
-                compile(new Expr(EConst(LCString(field)), expr.line)); // field
+                write(expr); // object
+                write(new Expr(EConst(LCString(field)), expr.line)); // field
 
                 if (isSafe) buffer.writeInt8(FIELD_GET_SAFE);
                 else buffer.writeInt8(FIELD_GET);
             case EArray(expr, index):
-                compile(expr); // array
-                compile(index); // index
+                write(expr); // array
+                write(index); // index
 
                 buffer.writeInt8(ARRAY_GET);
             case EUnop(op, isPrefix, expr):
                 switch (op) {
-                    case INC: compile(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line)), expr.line));
-                    case DEC: compile(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(-1)), expr.line)), expr.line));
+                    case INC: write(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line)), expr.line));
+                    case DEC: write(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(-1)), expr.line)), expr.line));
                     default:
                         buffer.writeInt8(UNOP);
                         buffer.writeInt8(cast op);
                 }
             case ECall(func, args):
-                compile(func);
+                write(func);
                 array(args);
                 buffer.writeInt8(CALL);
             case EWhile(cond, body):
@@ -213,10 +231,10 @@ class ByteCompilier {
                 setcontinue(condPointer);
 
                 bake(condPointer);
-                compile(cond);
+                write(cond);
 
                 jump(endPointer, GOTOIFNOT);
-                compile(body);
+                write(body);
                 jump(condPointer, GOTO);
                 bake(endPointer);
 
@@ -230,9 +248,9 @@ class ByteCompilier {
                 setcontinue(bodyPointer);
 
                 bake(bodyPointer);
-                compile(body);
+                write(body);
 
-                compile(cond);
+                write(cond);
                 jump(bodyPointer, GOTOIF);
                 bake(endPointer);
 
@@ -249,7 +267,7 @@ class ByteCompilier {
                     buffer.writeInt8(MAP_STACK);
                 }
             case ENew(className, args):
-                compile(new Expr(EIdent(className), expr.line));
+                write(new Expr(EIdent(className), expr.line));
                 array(args);
 
                 buffer.writeInt8(NEW);
@@ -271,6 +289,13 @@ class ByteCompilier {
                     buffer.writeInt8(RETURN);
                     jump(returnPointer, GOTO);
                 }
+            case EObject(fields):
+                buffer.writeInt8(PUSH_OBJECT);
+                for (field in fields) {
+                    compile(new Expr(EConst(LCString(field.name)), field.expr.line));
+                    compile(field.expr);
+                    buffer.writeInt8(OBJECT_SET);
+                }
             default:
         }
     }
@@ -279,7 +304,7 @@ class ByteCompilier {
         if (arr.length == 0)
             buffer.writeInt8(PUSH_ARRAY);
         else {
-            for (i in arr) compile(i);
+            for (i in arr) write(i);
 
             switch (shrink(arr.length)) {
                 case BIInt8(_): 
@@ -308,14 +333,14 @@ class ByteCompilier {
                     default: 
                 }
             case EField(expr, field, isSafe):
-                compile(expr); // object
-                compile(new Expr(EConst(LCString(field)), eqExpr.line)); // field
+                write(expr); // object
+                write(new Expr(EConst(LCString(field)), eqExpr.line)); // field
 
                 if (isSafe) buffer.writeInt8(FIELD_SET_SAFE);
                 else buffer.writeInt8(FIELD_SET);
             case EArray(expr, index):
-                compile(expr); // array
-                compile(index); // index
+                write(expr); // array
+                write(index); // index
 
                 buffer.writeInt8(ARRAY_SET);
             default: 

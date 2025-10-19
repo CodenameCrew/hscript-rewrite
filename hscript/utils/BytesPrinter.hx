@@ -102,6 +102,7 @@ class BytesPrinter {
             case NEW: "NEW";
             case ARRAY_GET: "ARRAY_GET";
             case ARRAY_SET: "ARRAY_SET";
+            case OBJECT_SET: "OBJECT_SET";
 
             case ARRAY_STACK8: 'ARRAY_STACK8 len=' + input.readInt8();
             case ARRAY_STACK16: 'ARRAY_STACK16 len=' + input.readInt16();

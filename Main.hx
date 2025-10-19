@@ -20,9 +20,7 @@ class Main {
 		trace(ExprUtils.print(expr));
 
 		var comp:ByteCompilier = new ByteCompilier();
-		comp.compile(expr);
-
-		var byteCode:Bytes = comp.buffer.getBytes();
+		var byteCode:Bytes = comp.compile(expr);
 		trace(byteCode.toHex());
 
 		Sys.println(BytesPrinter.print(byteCode));
