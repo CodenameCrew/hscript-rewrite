@@ -11,7 +11,7 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('var i = 0; while (i < 3) {trace("Hello World!", i); i++;}');
+        var expr = parser.parseString('var i = 1; try {i++; throw "Some Expection"; trace("banna");} catch(e) {trace(e);}');
 
 		var interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

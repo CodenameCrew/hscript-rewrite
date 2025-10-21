@@ -92,7 +92,7 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
-	 * Pushes a false to the top of the stack
+	 * Pushes a {} to the top of the stack
 	 */
 	var PUSH_OBJECT:ByteInstruction;
 
@@ -305,6 +305,37 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
+	 * Calls StaticInterp.makeIterator(stack[stackTop]), popping the input and pushing the result.
+	 */
+	var MAKE_ITERATOR:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Calls StaticInterp.makeKeyValueIterator(stack[stackTop]), popping the input and pushing the result.
+	 */
+	var MAKE_KEYVALUE_ITERATOR:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes stack[stackTop].hasNext() assuming stack[stackTop] is a Iterator type.
+	 */
+	var ITERATOR_HASNEXT:ByteInstruction;
+	
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes stack[stackTop-1].next() assuming stack[stackTop] is a Iterator type.
+	 */
+	var ITERATOR_NEXT:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes stack[stackTop-1].next() (.key, .value) assuming stack[stackTop] is a Iterator type.
+	 * Stack [..., key, value]
+	 */
+	var ITERATOR_KEYVALUE_NEXT:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
 	 * Gets a value from the array at the index.
 	 * Stack [..., array, index]
 	 */
@@ -359,26 +390,23 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var POP:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 40 BYTES -
-	 * A GOTO / GOTOIF / GOTOIFNOT as a Int8.
+	 * FOLLOWED BY 32 BYTES -
 	 * INDX: following bytes encoded as a Int.
-	 * Lets the runtime know the next GOTO instruction is a break;
+	 * Lets the runtime know a return has happened. Runtime decides to move the byte pointer to INDX (a catch block) if a expection is caught.
+	 * When a expection is hit it is stored in stack[stackTop].
 	**/
-	var BREAK:ByteInstruction;
+	var TRY:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 40 BYTES -
-	 * A GOTO / GOTOIF / GOTOIFNOT as a Int8.
-	 * INDX: following bytes encoded as a Int.
-	 * Lets the runtime know the next GOTO instruction is a continue;
+	 * FOLLOWED BY 0 BYTES -
+	 * Throws stack[stackTop].
 	**/
-	var CONTINUE:ByteInstruction;
+	var THROW:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 40 BYTES -
-	 * A GOTO / GOTOIF / GOTOIFNOT as a Int8.
+	 * FOLLOWED BY 32 BYTES -
 	 * INDX: following bytes encoded as a Int.
-	 * Lets the runtime know the next GOTO instruction is a return;
+	 * Lets the runtime know a return has happened. Runtime decides to move the byte pointer to INDX based on context.
 	**/
 	var RETURN:ByteInstruction;
 	
@@ -405,4 +433,9 @@ enum abstract ByteRuntimeError(ByteInt) from ByteInt from Int to ByteInt to Int 
 	 * Throws a hscript error: ECustom("Invalid continue").
 	 */
 	var INVALID_CONTINUE:ByteRuntimeError;
+
+	/**
+	 * Throws a hscript error: EInvalidIterator(stack[stackTop])
+	*/
+	var INVALID_ITERATOR:ByteRuntimeError;
 }

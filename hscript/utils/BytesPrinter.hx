@@ -90,9 +90,9 @@ class BytesPrinter {
             case SAVE_MEMORY16_STATIC: 'SAVE_MEMORY16_STATIC mem[' + input.readInt16() + ']';
             case SAVE_MEMORY32_STATIC: 'SAVE_MEMORY32_STATIC mem[' + input.readInt32() + ']';
 
-            case GOTO: 'GOTO ' + hex(input.readInt32() ,4);
-            case GOTOIF: 'GOTOIF ' + hex(input.readInt32() ,4);
-            case GOTOIFNOT: 'GOTOIFNOT ' + hex(input.readInt32() ,4);
+            case GOTO: 'GOTO ' + hex(input.readInt32(), 4);
+            case GOTOIF: 'GOTOIF ' + hex(input.readInt32(), 4);
+            case GOTOIFNOT: 'GOTOIFNOT ' + hex(input.readInt32(), 4);
 
             case CALL: "CALL";
             case CALL_NOARG: "CALL_NOARG";
@@ -105,6 +105,12 @@ class BytesPrinter {
             case ARRAY_SET: "ARRAY_SET";
             case OBJECT_SET: "OBJECT_SET";
 
+            case MAKE_ITERATOR: "MAKE_ITERATOR";
+            case MAKE_KEYVALUE_ITERATOR: "MAKE_KEYVALUE_ITERATOR";
+            case ITERATOR_HASNEXT: "ITERATOR_HASNEXT";
+            case ITERATOR_NEXT: "ITERATOR_NEXT";
+            case ITERATOR_KEYVALUE_NEXT: "ITERATOR_KEYVALUE_NEXT";
+
             case ARRAY_STACK8: 'ARRAY_STACK8 len=' + input.readInt8();
             case ARRAY_STACK16: 'ARRAY_STACK16 len=' + input.readInt16();
             case ARRAY_STACK32: 'ARRAY_STACK32 len=' + input.readInt32();
@@ -112,9 +118,9 @@ class BytesPrinter {
             case MAP_STACK: 'MAP_STACK';
 
             case POP: "POP";
-            case BREAK: "BREAK";
-            case CONTINUE: "CONTINUE";
-            case RETURN: "RETURN";
+            case TRY: "TRY catch=" + hex(input.readInt32(), 4);
+            case THROW: "THROW";
+            case RETURN: "RETURN" + hex(input.readInt32(), 4);
 
             case ERROR: "ERROR code=" + input.readInt8();
         }

@@ -273,35 +273,115 @@ class ByteCompilier {
                 buffer.writeInt8(NEW);
             case EBreak:
                 var breakPointer:BInstructionPointer = getbreak();
-                if (breakPointer != null) {
-                    buffer.writeInt8(BREAK);
-                    jump(breakPointer);
-                } else {
+                if (breakPointer != null) jump(breakPointer);
+                else {
                     buffer.writeInt8(ERROR);
                     buffer.writeInt8(INVALID_BREAK);
                 }
             case EContinue:
                 var continuePointer:BInstructionPointer = getcontinue();
-                if (continuePointer != null) {
-                    buffer.writeInt8(CONTINUE);
-                    jump(continuePointer);
-                } else {
+                if (continuePointer != null) jump(continuePointer);
+                else {
                     buffer.writeInt8(ERROR);
                     buffer.writeInt8(INVALID_CONTINUE);
                 }
             case EReturn(expr):
                 var returnPointer:BInstructionPointer = getreturn();
-                if (returnPointer != null) {
-                    buffer.writeInt8(RETURN);
-                    jump(returnPointer);
-                }
+                if (returnPointer != null) jump(returnPointer, RETURN);
             case EObject(fields):
                 buffer.writeInt8(PUSH_OBJECT);
                 for (field in fields) {
-                    compile(new Expr(EConst(LCString(field.name)), field.expr.line));
-                    compile(field.expr);
+                    write(new Expr(EConst(LCString(field.name)), field.expr.line));
+                    write(field.expr);
                     buffer.writeInt8(OBJECT_SET);
                 }
+            case EFor(varName, iterator, body):
+                var bodyPointer:BInstructionPointer = pointer();
+                var endPointer:BInstructionPointer = pointer();
+
+                write(iterator);
+                buffer.writeInt8(MAKE_ITERATOR);
+                buffer.writeInt8(PUSH_NULL);
+
+                buffer.writeInt8(BINOP);
+                buffer.writeInt8(cast EQ);
+
+                jump(bodyPointer, GOTOIFNOT);
+
+                buffer.writeInt8(ERROR);
+                buffer.writeInt8(INVALID_ITERATOR);
+
+                jump(endPointer);
+
+                bake(bodyPointer);
+
+                buffer.writeInt8(ITERATOR_HASNEXT);
+                buffer.writeInt8(PUSH_TRUE);
+                buffer.writeInt8(BINOP);
+                buffer.writeInt8(cast EQ);
+
+                jump(endPointer, GOTOIFNOT);
+                buffer.writeInt8(ITERATOR_NEXT);
+                assign(new Expr(EIdent(varName), expr.line));
+
+                write(body);
+
+                jump(bodyPointer);
+                bake(endPointer);
+            case EForKeyValue(key, value, iterator, body):
+                var bodyPointer:BInstructionPointer = pointer();
+                var endPointer:BInstructionPointer = pointer();
+
+                write(iterator);
+                buffer.writeInt8(MAKE_KEYVALUE_ITERATOR);
+                buffer.writeInt8(PUSH_NULL);
+
+                buffer.writeInt8(BINOP);
+                buffer.writeInt8(cast EQ);
+
+                jump(bodyPointer, GOTOIFNOT);
+
+                buffer.writeInt8(ERROR);
+                buffer.writeInt8(INVALID_ITERATOR);
+
+                jump(endPointer);
+                
+                bake(bodyPointer);
+
+                buffer.writeInt8(ITERATOR_HASNEXT);
+                buffer.writeInt8(PUSH_TRUE);
+                buffer.writeInt8(BINOP);
+                buffer.writeInt8(cast EQ);
+
+                jump(endPointer, GOTOIFNOT);
+                buffer.writeInt8(ITERATOR_KEYVALUE_NEXT);
+                assign(new Expr(EIdent(value), expr.line));
+                assign(new Expr(EIdent(key), expr.line));
+
+                write(body);
+
+                jump(bodyPointer);
+                bake(endPointer);
+            case ETry(expr, catchVar, catchExpr):
+                var catchPointer:BInstructionPointer = pointer();
+                var endPointer:BInstructionPointer = pointer();
+
+                jump(catchPointer, TRY);
+
+                write(expr);
+
+                if (catchExpr != null) {
+                    jump(endPointer);
+
+                    bake(catchPointer);
+                    assign(new Expr(EIdent(catchVar), expr.line));
+                    write(catchExpr);
+                } else bake(catchPointer);
+
+                bake(endPointer);
+            case EThrow(expr):
+                write(expr);
+                buffer.writeInt8(THROW);
             default:
         }
     }
