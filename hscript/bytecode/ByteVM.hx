@@ -65,7 +65,7 @@ class ByteVM {
 	}
 
 	public function execute_instruction():Void {
-		var opcode:ByteInstruction = reader.readByte();
+		var opcode:ByteInstruction = reader.readInt8();
 		switch (opcode) {
 			case ByteInstruction.PUSH_INT8:
 				stack.push(reader.readInt8());

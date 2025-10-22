@@ -51,7 +51,7 @@ class ByteCompilier {
         writePointers();
     }
 
-    public function write(expr:Expr) {
+    public function write(expr:Expr, used:Bool = true) {
         switch (expr.expr) {
             case EInfo(info, expr): write(expr);
             case EIdent(name):
@@ -199,7 +199,9 @@ class ByteCompilier {
 
                 bake(endPointer);
             case EParent(expr): write(expr);
-            case EBlock(exprs): for (expr in exprs) write(expr);
+            case EBlock(exprs): 
+                for (i => expr in exprs) 
+                    write(expr, i == exprs.length-1);
             case EField(expr, field, isSafe):
                 write(expr); // object
                 write(new Expr(EConst(LCString(field)), expr.line)); // field
@@ -231,10 +233,10 @@ class ByteCompilier {
                 setcontinue(condPointer);
 
                 bake(condPointer);
-                write(cond);
+                write(cond, false);
 
                 jump(endPointer, GOTOIFNOT);
-                write(body);
+                write(body, false);
                 jump(condPointer);
                 bake(endPointer);
 
@@ -248,9 +250,9 @@ class ByteCompilier {
                 setcontinue(bodyPointer);
 
                 bake(bodyPointer);
-                write(body);
+                write(body, false);
 
-                write(cond);
+                write(cond, false);
                 jump(bodyPointer, GOTOIF);
                 bake(endPointer);
 
@@ -324,7 +326,7 @@ class ByteCompilier {
                 buffer.writeInt8(ITERATOR_NEXT);
                 assign(new Expr(EIdent(varName), expr.line));
 
-                write(body);
+                write(body, false);
 
                 jump(bodyPointer);
                 bake(endPointer);
@@ -358,7 +360,7 @@ class ByteCompilier {
                 assign(new Expr(EIdent(value), expr.line));
                 assign(new Expr(EIdent(key), expr.line));
 
-                write(body);
+                write(body, false);
 
                 jump(bodyPointer);
                 bake(endPointer);
@@ -384,6 +386,8 @@ class ByteCompilier {
                 buffer.writeInt8(THROW);
             default:
         }
+
+        if (appendsOntoStack(expr) && !used) buffer.writeInt8(POP);
     }
 
     private inline function array(arr:Array<Expr>) {
@@ -434,6 +438,18 @@ class ByteCompilier {
                 buffer.writeInt8(INVALID_ASSIGN);
 
                 buffer.writeInt8(POP); // restore stack
+        }
+    }
+
+    private function appendsOntoStack(expr:Expr):Bool {
+        return switch (expr.expr) {
+            case EInfo(_) | EVar(_) | EParent(_) | EUnop(_) | EWhile(_) | EDoWhile(_) | EBreak | EContinue | EReturn(null) | EFor(_) | EForKeyValue(_) | EThrow(_) | EMeta(_): false;
+            case EIdent(_) | EConst(_) | EBlock(_) | EField(_) | EArray(_) | ECall(_) | EArrayDecl(_) | EMapDecl(_) | ENew(_) | EReturn(_) | EObject(_) | ESwitch(_) | ETry(_) | EIf(_) | EFunction(_) | EImport(_) | ETernary(_): true;
+            case EBinop(op, _):
+                switch (op) {
+                    case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN | ASSIGN: false;
+                    default: true;
+                }
         }
     }
 
