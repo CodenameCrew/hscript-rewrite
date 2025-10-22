@@ -131,20 +131,19 @@ class ByteCompiler {
 
                         write(right);
 
-                        buffer.writeInt8(BINOP);
-                        buffer.writeInt8(cast switch (op) {
-                            case ADD_ASSIGN: ADD;
-                            case SUB_ASSIGN: SUB;
-                            case MULT_ASSIGN: MULT;
-                            case DIV_ASSIGN: DIV;
-                            case MOD_ASSIGN: MOD;
-                            case SHL_ASSIGN: SHL;
-                            case SHR_ASSIGN: SHR;
-                            case USHR_ASSIGN: USHR;
-                            case OR_ASSIGN: OR;
-                            case AND_ASSIGN: AND;
-                            case XOR_ASSIGN: XOR;
-                            default: NCOAL; // case: NCOAL_ASSIGN
+                        buffer.writeInt8(switch (op) {
+                            case ADD_ASSIGN: BINOP_ADD;
+                            case SUB_ASSIGN: BINOP_SUB;
+                            case MULT_ASSIGN: BINOP_MULT;
+                            case DIV_ASSIGN: BINOP_DIV;
+                            case MOD_ASSIGN: BINOP_MOD;
+                            case SHL_ASSIGN: BINOP_SHL;
+                            case SHR_ASSIGN: BINOP_SHR;
+                            case USHR_ASSIGN: BINOP_USHR;
+                            case OR_ASSIGN: BINOP_OR;
+                            case AND_ASSIGN: BINOP_AND;
+                            case XOR_ASSIGN: BINOP_XOR;
+                            default: BINOP_NCOAL;
                         });
 
                         assign(left);
@@ -154,8 +153,36 @@ class ByteCompiler {
                     default:
                         write(left);
                         write(right);
-                        buffer.writeInt8(BINOP);
-                        buffer.writeInt8(cast op);
+
+                        buffer.writeInt8(switch (op) {
+                            case ADD: BINOP_ADD;
+                            case SUB: BINOP_SUB;
+                            case MULT: BINOP_MULT;
+                            case DIV: BINOP_DIV;
+                            case MOD: BINOP_MOD;
+
+                            case AND: BINOP_AND;
+                            case OR: BINOP_OR;
+                            case XOR: BINOP_XOR;
+                            case SHL: BINOP_SHL;
+                            case SHR: BINOP_SHR;
+                            case USHR: BINOP_USHR;
+
+                            case EQ: BINOP_EQ;
+                            case NEQ: BINOP_NEQ;
+                            case GTE: BINOP_GTE;
+                            case LTE: BINOP_LTE;
+                            case GT: BINOP_GT;
+                            case LT: BINOP_LT;
+
+                            case BOR: BINOP_BOR;
+                            case BAND: BINOP_BAND;
+                            case IS: BINOP_IS;
+                            case NCOAL: BINOP_NCOAL;
+
+                            case INTERVAL: BINOP_INTERVAL;
+                            default: PUSH_NULL;
+                        });
                 }
             case EVar(name, init, isPublic, isStatic):
                 if (init != null) write(init);
@@ -217,9 +244,15 @@ class ByteCompiler {
                 switch (op) {
                     case INC: write(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line)), expr.line));
                     case DEC: write(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(-1)), expr.line)), expr.line));
-                    default:
-                        buffer.writeInt8(UNOP);
-                        buffer.writeInt8(cast op);
+                    case NEG: 
+                        write(expr);
+                        buffer.writeInt8(UNOP_NEG);
+                    case NEG_BIT: 
+                        write(expr);
+                        buffer.writeInt8(UNOP_NEG_BIT);
+                    case NOT: 
+                        write(expr);
+                        buffer.writeInt8(UNOP_NOT);
                 }
             case ECall(func, args):
                 write(func);
@@ -306,8 +339,7 @@ class ByteCompiler {
                 buffer.writeInt8(MAKE_ITERATOR);
                 buffer.writeInt8(PUSH_NULL);
 
-                buffer.writeInt8(BINOP);
-                buffer.writeInt8(cast EQ);
+                buffer.writeInt8(BINOP_EQ);
 
                 jump(bodyPointer, GOTOIFNOT);
 
@@ -320,8 +352,7 @@ class ByteCompiler {
 
                 buffer.writeInt8(ITERATOR_HASNEXT);
                 buffer.writeInt8(PUSH_TRUE);
-                buffer.writeInt8(BINOP);
-                buffer.writeInt8(cast EQ);
+                buffer.writeInt8(BINOP_EQ);
 
                 jump(endPointer, GOTOIFNOT);
                 buffer.writeInt8(ITERATOR_NEXT);
@@ -339,8 +370,7 @@ class ByteCompiler {
                 buffer.writeInt8(MAKE_KEYVALUE_ITERATOR);
                 buffer.writeInt8(PUSH_NULL);
 
-                buffer.writeInt8(BINOP);
-                buffer.writeInt8(cast EQ);
+                buffer.writeInt8(BINOP_EQ);
 
                 jump(bodyPointer, GOTOIFNOT);
 
@@ -353,8 +383,7 @@ class ByteCompiler {
 
                 buffer.writeInt8(ITERATOR_HASNEXT);
                 buffer.writeInt8(PUSH_TRUE);
-                buffer.writeInt8(BINOP);
-                buffer.writeInt8(cast EQ);
+                buffer.writeInt8(BINOP_EQ);
 
                 jump(endPointer, GOTOIFNOT);
                 buffer.writeInt8(ITERATOR_KEYVALUE_NEXT);
@@ -385,6 +414,21 @@ class ByteCompiler {
             case EThrow(expr):
                 write(expr);
                 buffer.writeInt8(THROW);
+            case EMeta(name, args, expr): write(expr);
+            case EImport(path, mode):
+                switch (mode) {
+                    case As(name): write(new Expr(EConst(LCString(name)), expr.line));
+                    default:
+                }
+
+                write(new Expr(EConst(LCString(path)), expr.line));
+
+                buffer.writeInt8(IMPORT);
+                buffer.writeInt8(switch (mode) {
+                    case Normal: 0;
+                    case As(_): 1;
+                    case All: 2;
+                });
             default:
         }
 

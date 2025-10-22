@@ -29,20 +29,20 @@ class BytesPrinter {
                 var pos:Int = input.position;
                 var instr:ByteInstruction = cast input.readInt8();
 
-                str.add((input.position >= 2 ? '\n' : '') + '${hex(pos,4)}: ' + printInstruction(instr));
+                str.add((input.position >= 2 ? "\n" : "") + '${hex(pos,4)}: ' + printInstruction(instr));
             }
         } catch (e:Eof) {}
 
-        str.add('\n' + '${hex(input.position,4)}: ' + "BYTES_LEN");
+        str.add("\n" + '${hex(input.position,4)}: ' + "BYTES_LEN");
         return str.toString();
     }
 
     private function printInstruction(instr:ByteInstruction):String {
         return switch (instr) {
-            case PUSH_INT8: 'PUSH_INT8 ' + input.readInt8();
-            case PUSH_INT16: 'PUSH_INT16 ' + input.readInt16();
-            case PUSH_INT32: 'PUSH_INT32 ' + input.readInt32();
-            case PUSH_FLOAT: 'PUSH_FLOAT ' + input.readFloat();
+            case PUSH_INT8: "PUSH_INT8 " + input.readInt8();
+            case PUSH_INT16: "PUSH_INT16 " + input.readInt16();
+            case PUSH_INT32: "PUSH_INT32 " + input.readInt32();
+            case PUSH_FLOAT: "PUSH_FLOAT " + input.readFloat();
             case PUSH_STRING8:
                 var len = input.readInt8();
                 var str = input.readString(len, Encoding.UTF8);
@@ -71,28 +71,55 @@ class BytesPrinter {
             case PUSH_POSITIVE_INFINITY: "PUSH_POSITIVE_INFINITY";
             case PUSH_PI: "PUSH_PI";
 
-            case BINOP: "BINOP " + ExprPrinter.binopToString(cast input.readInt8());
-            case UNOP: "UNOP " + ExprPrinter.unopToString(cast input.readInt8());
+            case BINOP_ADD: "BINOP +";
+            case BINOP_SUB: "BINOP -";
+            case BINOP_MULT: "BINOP *";
+            case BINOP_DIV: "BINOP /";
+            case BINOP_MOD: "BINOP %";
 
-            case PUSH_MEMORY8: 'PUSH_MEMORY8 mem[' + input.readInt8() + ']';
-            case PUSH_MEMORY16: 'PUSH_MEMORY16 mem[' + input.readInt16() + ']';
-            case PUSH_MEMORY32: 'PUSH_MEMORY32 mem[' + input.readInt32() + ']';
+            case BINOP_AND: "BINOP &";
+            case BINOP_OR: "BINOP |";
+            case BINOP_XOR: "BINOP ^";
+            case BINOP_SHL: "BINOP <<";
+            case BINOP_SHR: "BINOP >>";
+            case BINOP_USHR: "BINOP >>>";
 
-            case SAVE_MEMORY8: 'SAVE_MEMORY8 mem[' + input.readInt8() + ']';
-            case SAVE_MEMORY16: 'SAVE_MEMORY16 mem[' + input.readInt16() + ']';
-            case SAVE_MEMORY32: 'SAVE_MEMORY32 mem[' + input.readInt32() + ']';
+            case BINOP_EQ: "BINOP ==";
+            case BINOP_NEQ: "BINOP !=";
+            case BINOP_GTE: "BINOP >=";
+            case BINOP_LTE: "BINOP <=";
+            case BINOP_GT: "BINOP >";
+            case BINOP_LT: "BINOP <";
 
-            case SAVE_MEMORY8_PUBLIC: 'SAVE_MEMORY8_PUBLIC mem[' + input.readInt8() + ']';
-            case SAVE_MEMORY16_PUBLIC: 'SAVE_MEMORY16_PUBLIC mem[' + input.readInt16() + ']';
-            case SAVE_MEMORY32_PUBLIC: 'SAVE_MEMORY32_PUBLIC mem[' + input.readInt32() + ']';
+            case BINOP_BOR: "BINOP ||";
+            case BINOP_BAND: "BINOP &&";
+            case BINOP_IS: "BINOP is";
+            case BINOP_NCOAL: "BINOP ??";
+            case BINOP_INTERVAL: "BINOP ...";
 
-            case SAVE_MEMORY8_STATIC: 'SAVE_MEMORY8_STATIC mem[' + input.readInt8() + ']';
-            case SAVE_MEMORY16_STATIC: 'SAVE_MEMORY16_STATIC mem[' + input.readInt16() + ']';
-            case SAVE_MEMORY32_STATIC: 'SAVE_MEMORY32_STATIC mem[' + input.readInt32() + ']';
+            case UNOP_NEG: "UNOP -";
+            case UNOP_NEG_BIT: "UNOP ~";
+            case UNOP_NOT: "UNOP -";
 
-            case GOTO: 'GOTO ' + hex(input.readInt32(), 4);
-            case GOTOIF: 'GOTOIF ' + hex(input.readInt32(), 4);
-            case GOTOIFNOT: 'GOTOIFNOT ' + hex(input.readInt32(), 4);
+            case PUSH_MEMORY8: "PUSH_MEMORY8 mem[" + input.readInt8() + "]";
+            case PUSH_MEMORY16: "PUSH_MEMORY16 mem[" + input.readInt16() + "]";
+            case PUSH_MEMORY32: "PUSH_MEMORY32 mem[" + input.readInt32() + "]";
+
+            case SAVE_MEMORY8: "SAVE_MEMORY8 mem[" + input.readInt8() + "]";
+            case SAVE_MEMORY16: "SAVE_MEMORY16 mem[" + input.readInt16() + "]";
+            case SAVE_MEMORY32: "SAVE_MEMORY32 mem[" + input.readInt32() + "]";
+
+            case SAVE_MEMORY8_PUBLIC: "SAVE_MEMORY8_PUBLIC mem[" + input.readInt8() + "]";
+            case SAVE_MEMORY16_PUBLIC: "SAVE_MEMORY16_PUBLIC mem[" + input.readInt16() + "]";
+            case SAVE_MEMORY32_PUBLIC: "SAVE_MEMORY32_PUBLIC mem[" + input.readInt32() + "]";
+
+            case SAVE_MEMORY8_STATIC: "SAVE_MEMORY8_STATIC mem[" + input.readInt8() + "]";
+            case SAVE_MEMORY16_STATIC: "SAVE_MEMORY16_STATIC mem[" + input.readInt16() + "]";
+            case SAVE_MEMORY32_STATIC: "SAVE_MEMORY32_STATIC mem[" + input.readInt32() + "]";
+
+            case GOTO: "GOTO " + hex(input.readInt32(), 4);
+            case GOTOIF: "GOTOIF " + hex(input.readInt32(), 4);
+            case GOTOIFNOT: "GOTOIFNOT " + hex(input.readInt32(), 4);
 
             case CALL: "CALL";
             case CALL_NOARG: "CALL_NOARG";
@@ -111,11 +138,12 @@ class BytesPrinter {
             case ITERATOR_NEXT: "ITERATOR_NEXT";
             case ITERATOR_KEYVALUE_NEXT: "ITERATOR_KEYVALUE_NEXT";
 
-            case ARRAY_STACK8: 'ARRAY_STACK8 len=' + input.readInt8();
-            case ARRAY_STACK16: 'ARRAY_STACK16 len=' + input.readInt16();
-            case ARRAY_STACK32: 'ARRAY_STACK32 len=' + input.readInt32();
+            case ARRAY_STACK8: "ARRAY_STACK8 len=" + input.readInt8();
+            case ARRAY_STACK16: "ARRAY_STACK16 len=" + input.readInt16();
+            case ARRAY_STACK32: "ARRAY_STACK32 len=" + input.readInt32();
 
-            case MAP_STACK: 'MAP_STACK';
+            case MAP_STACK: "MAP_STACK";
+            case IMPORT: "IMPORT type=" + input.readInt8();
 
             case POP: "POP";
             case TRY: "TRY catch=" + hex(input.readInt32(), 4);
@@ -128,6 +156,6 @@ class BytesPrinter {
 
     static inline function hex(i:Int, pad:Int):String {
         var s = StringTools.hex(i, pad);
-        return '0x' + s.toUpperCase();
+        return "0x" + s.toUpperCase();
     }
 }

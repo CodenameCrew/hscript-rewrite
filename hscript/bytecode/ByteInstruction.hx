@@ -133,20 +133,155 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var PUSH_PI:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 8 BYTES -
-	 * ALL BINOPS (USE ExprBinop) -
-	 * uses the last 2 variables in the stack to do a binop,
-	 * popping both of them and pushing the result to the stack
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of an addition from the last 2 values in the stack: v1 + v2;
 	 */
-	var BINOP:ByteInstruction; // v1 + v2
+	var BINOP_ADD:ByteInstruction;
 
 	/**
-	 * FOLLOWED BY 8 BYTES -
-	 * ALL UNOPS (USE ExprUnop) -
-	 * uses the last 2 variables in the stack to do a binop,
-	 * popping both of them and pushing the result to the stack
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a subtraction from the last 2 values in the stack: v1 - v2;
 	 */
-	var UNOP:ByteInstruction; // -v1
+	var BINOP_SUB:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a multiplication from the last 2 values in the stack: v1 * v2;
+	 */
+	var BINOP_MULT:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a division from the last 2 values in the stack: v1 / v2;
+	 */
+	var BINOP_DIV:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a modulus operation from the last 2 values in the stack: v1 % v2;
+	 */
+	var BINOP_MOD:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a bitwise AND from the last 2 values in the stack: v1 & v2;
+	 */
+	var BINOP_AND:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a bitwise OR from the last 2 values in the stack: v1 | v2;
+	 */
+	var BINOP_OR:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a bitwise XOR from the last 2 values in the stack: v1 ^ v2;
+	 */
+	var BINOP_XOR:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a left bit shift from the last 2 values in the stack: v1 << v2;
+	 */
+	var BINOP_SHL:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a signed right bit shift from the last 2 values in the stack: v1 >> v2;
+	 */
+	var BINOP_SHR:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of an unsigned right bit shift from the last 2 values in the stack: v1 >>> v2;
+	 */
+	var BINOP_USHR:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on whether the last 2 values in the stack are equal: v1 == v2;
+	 */
+	var BINOP_EQ:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on whether the last 2 values in the stack are not equal: v1 != v2;
+	 */
+	var BINOP_NEQ:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on whether the first value is greater than or equal to the second: v1 >= v2;
+	 */
+	var BINOP_GTE:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on whether the first value is less than or equal to the second: v1 <= v2;
+	 */
+	var BINOP_LTE:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on whether the first value is greater than the second: v1 > v2;
+	 */
+	var BINOP_GT:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on whether the first value is less than the second: v1 < v2;
+	 */
+	var BINOP_LT:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on the logical OR of the last 2 values in the stack: v1 || v2;
+	 */
+	var BINOP_BOR:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on the logical AND of the last 2 values in the stack: v1 && v2;
+	 */
+	var BINOP_BAND:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes true or false depending on whether the first value is of the same type as the second: v1 is v2;
+	 */
+	var BINOP_IS:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes the result of a null-coalescing operation from the last 2 values in the stack: v1 ?? v2;
+	 * Returns v1 if not null, otherwise v2.
+	 */
+	var BINOP_NCOAL:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes an interval (range) value constructed from the last 2 values in the stack: v1 ... v2;
+	 */
+	var BINOP_INTERVAL:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes a arthemetic negation with stack[stackTop]: -v
+	 */
+	var UNOP_NEG:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes a bitwise negation with stack[stackTop]: ~v
+	 */
+	var UNOP_NEG_BIT:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Pushes a logical negation with stack[stackTop]: !v
+	 */
+	var UNOP_NOT:ByteInstruction;
 
 	/**
 	 * FOLLOWED BY 8 BYTES -
@@ -382,6 +517,17 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	 * Creates a map with stack[stackTop-1] (keys) and stack[stackTop] (values).
 	 */
 	var MAP_STACK:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 8 BYTES -
+	 * TYPE: Defined by the first bytes as a Int8
+	 * Resolves a import with stack[stackTop].
+	 * 
+	 * TYPE 0 - EImportMode.Normal
+	 * TYPE 1 - EImportMode.As alias = stack[stackTop-1]
+	 * TYPE 2 - EImportMode.All
+	 */
+	var IMPORT:ByteInstruction;
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
