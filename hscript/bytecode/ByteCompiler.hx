@@ -209,20 +209,21 @@ class ByteCompiler {
                         buffer.writeInt32(name);
                 }
             case EIf(cond, thenExpr, elseExpr) | ETernary(cond, thenExpr, elseExpr):
+                // EIf's must return null even if the condition is not met
+                var retElseExpr:Expr = elseExpr == null ? new Expr(EConst(LCNull), thenExpr.line) : elseExpr;
+
                 var endPointer:BInstructionPointer = pointer();
                 var elsePointer:BInstructionPointer = pointer();
 
                 write(cond);
 
-                jump(elseExpr == null ? endPointer : elsePointer, GOTOIFNOT);
+                jump(elsePointer, GOTOIFNOT);
                 write(thenExpr);
 
-                if (elseExpr != null) {
-                    jump(endPointer);
+                jump(endPointer);
 
-                    bake(elsePointer);
-                    write(elseExpr);
-                }
+                bake(elsePointer);
+                write(retElseExpr);
 
                 bake(endPointer);
             case EParent(expr): write(expr);
@@ -423,6 +424,30 @@ class ByteCompiler {
                     case As(_): 1;
                     case All: 2;
                 });
+            case ESwitch(expr, cases, defaultExpr):
+                var endPointer:BInstructionPointer = pointer();
+                var casePointers:Array<BInstructionPointer> = [for (i in 0...cases.length) pointer()];
+
+                // Jump table
+                write(expr);
+                for (i => switchCase in cases) {
+                    for (value in switchCase.values) {
+                        write(value);
+                        buffer.writeInt8(COMPARASION);
+                        jump(casePointers[i], GOTOIF);
+                    }
+                }
+
+                write(defaultExpr);
+                jump(endPointer);
+
+                for (i => switchCase in cases) {
+                    bake(casePointers[i]);
+                    write(switchCase.expr);
+                    jump(endPointer);
+                }
+
+                bake(endPointer);
             default:
         }
 

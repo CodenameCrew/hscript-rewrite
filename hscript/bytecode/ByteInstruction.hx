@@ -206,6 +206,13 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
+	 * Equivalent to BINOP_EQ but is non destructive to the first variable on the stack.
+	 * v1 stays on the stack when v1 == v2;
+	 */
+	var COMPARASION:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
 	 * Equivalent to BINOP_EQ with stack[stackTop] and true.
 	 */
 	var BINOP_EQ_TRUE:ByteInstruction;
