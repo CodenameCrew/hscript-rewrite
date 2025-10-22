@@ -288,6 +288,7 @@ class ByteCompilier {
                     buffer.writeInt8(INVALID_CONTINUE);
                 }
             case EReturn(expr):
+                if (expr != null) write(expr);
                 var returnPointer:BInstructionPointer = getreturn();
                 if (returnPointer != null) jump(returnPointer, RETURN);
             case EObject(fields):

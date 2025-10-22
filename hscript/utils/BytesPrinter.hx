@@ -120,7 +120,7 @@ class BytesPrinter {
             case POP: "POP";
             case TRY: "TRY catch=" + hex(input.readInt32(), 4);
             case THROW: "THROW";
-            case RETURN: "RETURN" + hex(input.readInt32(), 4);
+            case RETURN: "RETURN " + hex(input.readInt32(), 4);
 
             case ERROR: "ERROR code=" + input.readInt8();
         }

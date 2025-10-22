@@ -3,7 +3,6 @@ package hscript.utils;
 import hscript.Ast.SwitchCase;
 import hscript.Ast.ObjectField;
 import hscript.Ast.Argument;
-import hscript.Ast.ExprDef;
 import hscript.Ast.Expr;
 
 class ExprUtils {
@@ -81,47 +80,43 @@ class ExprUtils {
         }
     }
 
-    /**
-     * Helper to remap a Expr.
-     * @param expr 
-     * @param iter Return the new Expr.
-     * @return Expr
-     */
-    public static function map(expr:Expr, iter:Expr->Expr):Expr { 
-        return new Expr(switch (expr.expr) {
-            case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) iter(init) else null, isPublic, isStatic);
-            case EParent(expr): EParent(iter(expr));
-            case EBlock(exprs): EBlock([for (expr in exprs) iter(expr)]);
-            case EField(expr, field, isSafe): EField(iter(expr), field, isSafe); 
-            case EBinop(op, left, right): EBinop(op, iter(left), iter(right));
-            case EUnop(op, isPrefix, expr): EUnop(op, isPrefix, iter(expr));
-            case ECall(func, args): ECall(iter(func), [for (expr in args) iter(expr)]);
-            case EIf(cond, thenExpr, elseExpr): EIf(iter(cond), iter(thenExpr), if (elseExpr != null) iter(elseExpr) else null);
-            case EWhile(cond, body): EWhile(iter(cond), iter(body));
-            case EFor(varName, iterator, body): EFor(varName, iter(iterator), iter(body));
-            case EForKeyValue(key, value, iterator, body): EForKeyValue(key, value, iter(iterator), iter(body));
+    public static function map(expr:Expr, iter:Expr->Expr):Expr {
+        var result:Expr = iter(expr);
+        if (result == null) return null;
+        return new Expr(switch (result.expr) {
+            case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) map(init, iter) else null, isPublic, isStatic);
+            case EParent(expr): EParent(map(expr, iter));
+            case EBlock(exprs): EBlock([for (expr in exprs) map(expr, iter)]);
+            case EField(expr, field, isSafe): EField(map(expr, iter), field, isSafe); 
+            case EBinop(op, left, right): EBinop(op, map(left, iter), map(right, iter));
+            case EUnop(op, isPrefix, expr): EUnop(op, isPrefix, map(expr, iter));
+            case ECall(func, args): ECall(map(func, iter), [for (expr in args) map(expr, iter)]);
+            case EIf(cond, thenExpr, elseExpr): EIf(map(cond, iter), map(thenExpr, iter), if (elseExpr != null) map(elseExpr, iter) else null);
+            case EWhile(cond, body): EWhile(map(cond, iter), map(body, iter));
+            case EFor(varName, iterator, body): EFor(varName, map(iterator, iter), map(body, iter));
+            case EForKeyValue(key, value, iterator, body): EForKeyValue(key, value, map(iterator, iter), map(body, iter));
             case EFunction(args, body, name, isPublic, isStatic): EFunction([
-                for (arg in args) if (arg.value != null) new Argument(arg.name, arg.opt, iter(arg.value)) else arg
-            ], iter(body), name, isPublic, isStatic);
-            case EReturn(expr): EReturn(if (expr != null) iter(expr) else null);
-            case EArray(expr, index): EArray(iter(expr), iter(index));
-            case EMapDecl(keys, values): EMapDecl([for (expr in keys) iter(expr)], [for (expr in values) iter(expr)]);
-            case EArrayDecl(items): EArrayDecl([for (expr in items) iter(expr)]);
-            case ENew(className, args): ENew(className, [for (expr in args) iter(expr)]);
-            case EThrow(expr): EThrow(iter(expr));
-            case ETry(expr, catchVar, catchExpr): ETry(iter(expr), catchVar, iter(catchExpr));
-            case EObject(fields): EObject([for (field in fields) new ObjectField(field.name, iter(field.expr))]);
-            case ETernary(cond, thenExpr, elseExpr): ETernary(iter(cond), iter(thenExpr), iter(elseExpr));
+                for (arg in args) if (arg.value != null) new Argument(arg.name, arg.opt, map(arg.value, iter)) else arg
+            ], map(body, iter), name, isPublic, isStatic);
+            case EReturn(expr): EReturn(if (expr != null) map(expr, iter) else null);
+            case EArray(expr, index): EArray(map(expr, iter), map(index, iter));
+            case EMapDecl(keys, values): EMapDecl([for (expr in keys) map(expr, iter)], [for (expr in values) map(expr, iter)]);
+            case EArrayDecl(items): EArrayDecl([for (expr in items) map(expr, iter)]);
+            case ENew(className, args): ENew(className, [for (expr in args) map(expr, iter)]);
+            case EThrow(expr): EThrow(map(expr, iter));
+            case ETry(expr, catchVar, catchExpr): ETry(map(expr, iter), catchVar, map(catchExpr, iter));
+            case EObject(fields): EObject([for (field in fields) new ObjectField(field.name, map(field.expr, iter))]);
+            case ETernary(cond, thenExpr, elseExpr): ETernary(map(cond, iter), map(thenExpr, iter), map(elseExpr, iter));
             case ESwitch(expr, cases, defaultExpr): ESwitch(
-                iter(expr),
-                [for (switchCase in cases) new SwitchCase([for (val in switchCase.values) iter(val)], iter(switchCase.expr))],
-                if (defaultExpr != null) iter(defaultExpr) else null
+                map(expr, iter),
+                [for (switchCase in cases) new SwitchCase([for (val in switchCase.values) map(val, iter)], map(switchCase.expr, iter))],
+                if (defaultExpr != null) map(defaultExpr, iter) else null
             );
-            case EDoWhile(cond, body): EDoWhile(iter(cond), iter(body));
-            case EMeta(name, args, expr): EMeta(name, [for (arg in args) iter(arg)], iter(expr));
-            case EInfo(info, expr): EInfo(info, iter(expr));
-            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): expr.expr; 
-        }, expr.line);
+            case EDoWhile(cond, body): EDoWhile(map(cond, iter), map(body, iter));
+            case EMeta(name, args, expr): EMeta(name, [for (arg in args) map(arg, iter)], map(expr, iter));
+            case EInfo(info, expr): EInfo(info, map(expr, iter));
+            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): result.expr; 
+        }, result.line);
     }
 
     /**

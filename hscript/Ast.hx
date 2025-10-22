@@ -225,6 +225,25 @@ enum abstract ExprBinop(UInt8) {
         ExprBinop.XOR_ASSIGN => LexerOp.XOR_ASSIGN,
         ExprBinop.NCOAL_ASSIGN => LexerOp.NCOAL_ASSIGN
     ];
+
+    public static inline function isAssign(op:ExprBinop):Dynamic {
+        return switch (op) {
+            case ADD_ASSIGN: true;
+            case SUB_ASSIGN: true;
+            case MULT_ASSIGN: true;
+            case DIV_ASSIGN: true;
+            case MOD_ASSIGN: true;
+            case SHL_ASSIGN: true;
+            case SHR_ASSIGN: true;
+            case USHR_ASSIGN: true;
+            case OR_ASSIGN: true;
+            case AND_ASSIGN: true;
+            case XOR_ASSIGN: true;
+            case NCOAL_ASSIGN: true;
+
+            default: false;
+        }
+    }
 }
 
 /**
