@@ -337,9 +337,7 @@ class ByteCompiler {
 
                 write(iterator);
                 buffer.writeInt8(MAKE_ITERATOR);
-                buffer.writeInt8(PUSH_NULL);
-
-                buffer.writeInt8(BINOP_EQ);
+                buffer.writeInt8(BINOP_EQ_NULL);
 
                 jump(bodyPointer, GOTOIFNOT);
 
@@ -351,8 +349,7 @@ class ByteCompiler {
                 bake(bodyPointer);
 
                 buffer.writeInt8(ITERATOR_HASNEXT);
-                buffer.writeInt8(PUSH_TRUE);
-                buffer.writeInt8(BINOP_EQ);
+                buffer.writeInt8(BINOP_EQ_TRUE);
 
                 jump(endPointer, GOTOIFNOT);
                 buffer.writeInt8(ITERATOR_NEXT);
@@ -368,9 +365,7 @@ class ByteCompiler {
 
                 write(iterator);
                 buffer.writeInt8(MAKE_KEYVALUE_ITERATOR);
-                buffer.writeInt8(PUSH_NULL);
-
-                buffer.writeInt8(BINOP_EQ);
+                buffer.writeInt8(BINOP_EQ_NULL);
 
                 jump(bodyPointer, GOTOIFNOT);
 
@@ -382,8 +377,7 @@ class ByteCompiler {
                 bake(bodyPointer);
 
                 buffer.writeInt8(ITERATOR_HASNEXT);
-                buffer.writeInt8(PUSH_TRUE);
-                buffer.writeInt8(BINOP_EQ);
+                buffer.writeInt8(BINOP_EQ_TRUE);
 
                 jump(endPointer, GOTOIFNOT);
                 buffer.writeInt8(ITERATOR_KEYVALUE_NEXT);

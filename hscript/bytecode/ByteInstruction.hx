@@ -206,6 +206,18 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
+	 * Equivalent to BINOP_EQ with stack[stackTop] and true.
+	 */
+	var BINOP_EQ_TRUE:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Equivalent to BINOP_EQ with stack[stackTop] and null.
+	 */
+	var BINOP_EQ_NULL:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 0 BYTES -
 	 * Pushes true or false depending on whether the last 2 values in the stack are not equal: v1 != v2;
 	 */
 	var BINOP_NEQ:ByteInstruction;
