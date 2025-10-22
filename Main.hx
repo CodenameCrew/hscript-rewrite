@@ -13,7 +13,19 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('var i = 0; i; return i * 20; i; i++; i;');
+        var expr = parser.parseString('
+			var i = 0;
+			i++;
+			switch (i) {
+				case 0: "banna";
+				case 1: "apples";
+				case 2: "pineapple";
+				case 3:
+					[3,4,5];
+					3;
+				default: 78;
+			}
+		');
 
 		var interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

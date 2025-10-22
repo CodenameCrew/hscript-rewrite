@@ -276,8 +276,10 @@ class ExprPrinter {
 			case ESwitch(e, cases, defaultExpr):
 				add("switch (");
 				printExpr(e);
-				add(") {");
+				add(") {\n");
+				increaseScope();
 				for (c in cases) {
+					add(space);
 					add("case ");
 					for (i => v in c.values) {
 						if (i > 0) add(", ");
@@ -288,10 +290,13 @@ class ExprPrinter {
 					add(";\n");
 				}
 				if (defaultExpr != null) {
+					add(space);
 					add("default: ");
 					printExpr(defaultExpr);
 					add(";\n");
 				}
+				decreaseScope();
+				add(space);
 				add("}");
 			case EMeta(name, args, e):
 				add("@");
@@ -315,6 +320,7 @@ class ExprPrinter {
 						add(".*");
 					default:
 				}
+				add(";");
 			case EInfo(_, _):
 				add("<EInfo>");
 		}
