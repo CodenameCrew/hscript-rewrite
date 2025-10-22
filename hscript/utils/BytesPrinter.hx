@@ -85,6 +85,8 @@ class BytesPrinter {
             case BINOP_USHR: "BINOP >>>";
 
             case BINOP_EQ: "BINOP ==";
+            case BINOP_EQ_TRUE: "BINOP == true";
+            case BINOP_EQ_NULL: "BINOP == null";
             case BINOP_NEQ: "BINOP !=";
             case BINOP_GTE: "BINOP >=";
             case BINOP_LTE: "BINOP <=";
