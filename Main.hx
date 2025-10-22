@@ -15,15 +15,8 @@ class Main {
         var parser = new Parser();
         var expr = parser.parseString('
 			var i = 0;
-			i++;
 			switch (i) {
-				case 0: "banna";
-				case 1: "apples";
-				case 2: "pineapple";
-				case 3:
-					[3,4,5];
-					3;
-				default: 78;
+				case 0: trace(32);
 			}
 		');
 

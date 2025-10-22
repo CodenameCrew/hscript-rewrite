@@ -438,12 +438,18 @@ class ByteCompiler {
                     }
                 }
 
-                write(defaultExpr);
+                if (defaultExpr != null) {
+                    buffer.writeInt8(POP); // get rid of switch value 
+                    write(defaultExpr);
+                }
                 jump(endPointer);
 
                 for (i => switchCase in cases) {
                     bake(casePointers[i]);
+
+                    buffer.writeInt8(POP); // get rid of switch value 
                     write(switchCase.expr);
+
                     jump(endPointer);
                 }
 
