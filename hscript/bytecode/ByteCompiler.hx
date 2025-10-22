@@ -444,8 +444,9 @@ class ByteCompiler {
 
     private function appendsOntoStack(expr:Expr):Bool {
         return switch (expr.expr) {
-            case EInfo(_) | EVar(_) | EParent(_) | EUnop(_) | EWhile(_) | EDoWhile(_) | EBreak | EContinue | EReturn(null) | EFor(_) | EForKeyValue(_) | EThrow(_) | EMeta(_): false;
-            case EIdent(_) | EConst(_) | EBlock(_) | EField(_) | EArray(_) | ECall(_) | EArrayDecl(_) | EMapDecl(_) | ENew(_) | EReturn(_) | EObject(_) | ESwitch(_) | ETry(_) | EIf(_) | EFunction(_) | EImport(_) | ETernary(_): true;
+            case EInfo(_) | EVar(_) | EParent(_) | EUnop(_) | EWhile(_) | EDoWhile(_) | EBreak | EContinue | EFor(_) | EForKeyValue(_) | EThrow(_) | EMeta(_): false;
+            case EIdent(_) | EConst(_) | EBlock(_) | EField(_) | EArray(_) | ECall(_) | EArrayDecl(_) | EMapDecl(_) | ENew(_) | EObject(_) | ESwitch(_) | ETry(_) | EIf(_) | EFunction(_) | EImport(_) | ETernary(_): true;
+            case EReturn(expr): expr != null;
             case EBinop(op, _):
                 switch (op) {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN | ASSIGN: false;

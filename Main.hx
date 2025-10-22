@@ -13,7 +13,7 @@ import hscript.Parser;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('return 3 + 4 / 4 * 20;');
+        var expr = parser.parseString('var i = 0; i; return i * 20; i; i++; i;');
 
 		var interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}
