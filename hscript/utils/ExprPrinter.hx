@@ -207,9 +207,12 @@ class ExprPrinter {
 				add(") ");
 				printExpr(body);
 			case EReturn(e):
-				add("return ");
-				if (e != null)
+				add("return");
+				if (e != null) {
+					add(" ");
 					printExpr(e);
+				}
+				add(";");
 			case EArray(e, index):
 				printExpr(e);
 				add("[");
