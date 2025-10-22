@@ -19,7 +19,7 @@ class BInstructionPointer {
     public function new() {}
 }
 
-class ByteCompilier {
+class ByteCompiler {
     public var buffer:BytesOutput;
 
     public function new() {

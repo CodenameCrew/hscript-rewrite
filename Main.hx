@@ -5,7 +5,7 @@ import hscript.anaylzers.ConstEval;
 import haxe.io.Bytes;
 import hscript.utils.ExprUtils;
 import hscript.utils.BytesPrinter;
-import hscript.bytecode.ByteCompilier;
+import hscript.bytecode.ByteCompiler;
 import hscript.Error;
 import hscript.Interp;
 import hscript.Parser;
@@ -23,7 +23,7 @@ class Main {
 		var const:Expr = ConstEval.eval(expr);
 		trace(ExprUtils.print(const, true));
 
-		var comp:ByteCompilier = new ByteCompilier();
+		var comp:ByteCompiler = new ByteCompiler();
 		var byteCode:Bytes = comp.compile(expr);
 		trace(byteCode.toHex(), byteCode.length);
 
