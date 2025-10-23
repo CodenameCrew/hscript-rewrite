@@ -53,7 +53,11 @@ class ByteCompiler {
 
     public function write(expr:Expr, used:Bool = true) {
         switch (expr.expr) {
-            case EInfo(info, expr): write(expr);
+            case EInfo(info, expr): 
+                array([for (varName in info) new Expr(EConst(LCString(varName)), expr.line)]);
+                buffer.writeInt8(LOAD_TABLES);
+
+                write(expr);
             case EIdent(name):
                 switch (shrink(name)) {
                     case BIInt8(_):
@@ -188,26 +192,12 @@ class ByteCompiler {
                 if (init != null) write(init);
                 else buffer.writeInt8(PUSH_NULL);
 
-                switch (shrink(name)) {
-                    case BIInt8(_):
-                        if (isStatic) buffer.writeInt8(SAVE_MEMORY8_STATIC); 
-                        else if (isPublic) buffer.writeInt8(SAVE_MEMORY8_PUBLIC); 
-                        else buffer.writeInt8(SAVE_MEMORY8);
+                var type:Null<ByteRuntimeDeclareType> = null;
+                if (isPublic) type = ByteRuntimeDeclareType.PUBLIC;
+                if (isStatic) type = ByteRuntimeDeclareType.STATIC;
 
-                        buffer.writeInt8(name);
-                    case BIInt16(_):
-                        if (isStatic) buffer.writeInt8(SAVE_MEMORY16_STATIC); 
-                        else if (isPublic) buffer.writeInt8(SAVE_MEMORY16_PUBLIC); 
-                        else buffer.writeInt8(SAVE_MEMORY16);
+                declare(name, type);
 
-                        buffer.writeInt16(name);
-                    case BIInt32(_): 
-                        if (isStatic) buffer.writeInt8(SAVE_MEMORY32_STATIC); 
-                        else if (isPublic) buffer.writeInt8(SAVE_MEMORY32_PUBLIC); 
-                        else buffer.writeInt8(SAVE_MEMORY32);
-
-                        buffer.writeInt32(name);
-                }
             case EIf(cond, thenExpr, elseExpr) | ETernary(cond, thenExpr, elseExpr):
                 // EIf's must return null even if the condition is not met
                 var retElseExpr:Expr = elseExpr == null ? new Expr(EConst(LCNull), thenExpr.line) : elseExpr;
@@ -338,7 +328,8 @@ class ByteCompiler {
 
                 write(iterator);
                 buffer.writeInt8(MAKE_ITERATOR);
-                buffer.writeInt8(BINOP_EQ_NULL);
+                buffer.writeInt8(PUSH_NULL);
+                buffer.writeInt8(COMPARASION_EQ);
 
                 jump(bodyPointer, GOTOIFNOT);
 
@@ -354,7 +345,7 @@ class ByteCompiler {
 
                 jump(endPointer, GOTOIFNOT);
                 buffer.writeInt8(ITERATOR_NEXT);
-                assign(new Expr(EIdent(varName), expr.line));
+                declare(varName);
 
                 write(body, false);
 
@@ -366,7 +357,8 @@ class ByteCompiler {
 
                 write(iterator);
                 buffer.writeInt8(MAKE_KEYVALUE_ITERATOR);
-                buffer.writeInt8(BINOP_EQ_NULL);
+                buffer.writeInt8(PUSH_NULL);
+                buffer.writeInt8(COMPARASION_EQ);
 
                 jump(bodyPointer, GOTOIFNOT);
 
@@ -382,8 +374,8 @@ class ByteCompiler {
 
                 jump(endPointer, GOTOIFNOT);
                 buffer.writeInt8(ITERATOR_KEYVALUE_NEXT);
-                assign(new Expr(EIdent(value), expr.line));
-                assign(new Expr(EIdent(key), expr.line));
+                declare(value);
+                declare(key);
 
                 write(body, false);
 
@@ -401,7 +393,7 @@ class ByteCompiler {
                     jump(endPointer);
 
                     bake(catchPointer);
-                    assign(new Expr(EIdent(catchVar), expr.line));
+                    declare(catchVar);
                     write(catchExpr);
                 } else bake(catchPointer);
 
@@ -433,13 +425,13 @@ class ByteCompiler {
                 for (i => switchCase in cases) {
                     for (value in switchCase.values) {
                         write(value);
-                        buffer.writeInt8(COMPARASION);
+                        buffer.writeInt8(COMPARASION_EQ);
                         jump(casePointers[i], GOTOIF);
                     }
                 }
 
                 if (defaultExpr != null) {
-                    buffer.writeInt8(POP); // get rid of switch value 
+                    buffer.writeInt8(POP);
                     write(defaultExpr);
                 }
                 jump(endPointer);
@@ -447,7 +439,7 @@ class ByteCompiler {
                 for (i => switchCase in cases) {
                     bake(casePointers[i]);
 
-                    buffer.writeInt8(POP); // get rid of switch value 
+                    buffer.writeInt8(POP);
                     write(switchCase.expr);
 
                     jump(endPointer);
@@ -527,6 +519,35 @@ class ByteCompiler {
                 buffer.writeInt8(INVALID_ASSIGN);
 
                 buffer.writeInt8(POP); // restore stack
+        }
+    }
+
+    private inline function declare(name:Int, type:Null<ByteRuntimeDeclareType> = null) {
+        switch (shrink(name)) {
+            case BIInt8(_):
+                if (type != null) {
+                    buffer.writeInt8(DECLARE_TYPED_MEMORY8);
+                    buffer.writeInt8(type);
+                }
+                else buffer.writeInt8(DECLARE_MEMORY8);
+
+                buffer.writeInt8(name);
+            case BIInt16(_):
+                if (type != null) {
+                    buffer.writeInt8(DECLARE_TYPED_MEMORY16);
+                    buffer.writeInt8(type);
+                }
+                else buffer.writeInt8(DECLARE_MEMORY16);
+
+                buffer.writeInt16(name);
+            case BIInt32(_): 
+                if (type != null) {
+                    buffer.writeInt8(DECLARE_TYPED_MEMORY32);
+                    buffer.writeInt8(type);
+                }
+                else buffer.writeInt8(DECLARE_MEMORY32);
+
+                buffer.writeInt32(name);
         }
     }
 

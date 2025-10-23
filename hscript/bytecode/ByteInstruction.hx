@@ -206,10 +206,10 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
-	 * Equivalent to BINOP_EQ but is non destructive to the first variable on the stack.
+	 * Equivalent to BINOP_EQ but is non destructive to the left variable on the stack.
 	 * v1 stays on the stack when v1 == v2;
 	 */
-	var COMPARASION:ByteInstruction;
+	var COMPARASION_EQ:ByteInstruction;
 
 	/**
 	 * FOLLOWED BY 0 BYTES -
@@ -305,6 +305,51 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	/**
 	 * FOLLOWED BY 8 BYTES -
 	 * INDX: following bytes encoded as a Int8.
+	 * Declares a variable[INDX] with a refrence to stack[stackTop].
+	 */
+	var DECLARE_MEMORY8:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 16 BYTES -
+	 * INDX: following bytes encoded as a Int16.
+	 * Declares a variable[INDX] with a refrence to stack[stackTop].
+	 */
+	var DECLARE_MEMORY16:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 32 BYTES -
+	 * INDX: following bytes encoded as a Int.
+	 * Declares a variable[INDX] with a refrence to stack[stackTop].
+	 */
+	var DECLARE_MEMORY32:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 16 BYTES -
+	 * TYPE: following bytes encoded as a Int8 (USE ByteRuntimeDeclareType).
+	 * INDX: following bytes encoded as a Int8.
+	 * Declares a variable pointing to the TYPE with a refrence to stack[stackTop].
+	 */
+	var DECLARE_TYPED_MEMORY8:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 24 BYTES -
+	 * TYPE: following bytes encoded as a Int8 (USE ByteRuntimeDeclareType).
+	 * INDX: following bytes encoded as a Int16.
+	 * Declares a variable pointing to the TYPE with a refrence to stack[stackTop].
+	 */
+	var DECLARE_TYPED_MEMORY16:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 40 BYTES -
+	 * TYPE: following bytes encoded as a Int8 (USE ByteRuntimeDeclareType).
+	 * INDX: following bytes encoded as a Int16.
+	 * Declares a variable pointing to the TYPE with a refrence to stack[stackTop].
+	 */
+	var DECLARE_TYPED_MEMORY32:ByteInstruction;
+
+	/**
+	 * FOLLOWED BY 8 BYTES -
+	 * INDX: following bytes encoded as a Int8.
 	 * Pushes memory[INDX] to the top of the stack.
 	 */
 	var PUSH_MEMORY8:ByteInstruction;
@@ -343,48 +388,6 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	  * Saves the top of the stack to memory[INDX], popping it in the process.
 	  */
 	var SAVE_MEMORY32:ByteInstruction;
-
-	/**
-	 * FOLLOWED BY 8 BYTES -
-	 * INDX: following bytes encoded as a Int8.
-	 * Saves the top of the stack to publicVariables[INDX], popping it in the process.
-	 */
-	var SAVE_MEMORY8_PUBLIC:ByteInstruction;
-
-	 /**
-	  * FOLLOWED BY 16 BYTES -
-	  * INDX: following bytes encoded as a Int16.
-	  * Saves the top of the stack to publicVariables[INDX], popping it in the process.
-	  */
-	var SAVE_MEMORY16_PUBLIC:ByteInstruction;
-
-	/**
-	  * FOLLOWED BY 32 BYTES -
-	  * INDX: following bytes encoded as a Int.
-	  * Saves the top of the stack to publicVariables[INDX], popping it in the process.
-	  */
-	var SAVE_MEMORY32_PUBLIC:ByteInstruction;
-
-	/**
-	 * FOLLOWED BY 8 BYTES -
-	 * INDX: following bytes encoded as a Int8.
-	 * Saves the top of the stack to staticVariables[INDX], popping it in the process.
-	 */
-	var SAVE_MEMORY8_STATIC:ByteInstruction;
-
-	 /**
-	  * FOLLOWED BY 16 BYTES -
-	  * INDX: following bytes encoded as a Int16.
-	  * Saves the top of the stack to staticVariables[INDX], popping it in the process.
-	  */
-	var SAVE_MEMORY16_STATIC:ByteInstruction;
-
-	/**
-	  * FOLLOWED BY 32 BYTES -
-	  * INDX: following bytes encoded as a Int.
-	  * Saves the top of the stack to staticVariables[INDX], popping it in the process.
-	  */
-	var SAVE_MEMORY32_STATIC:ByteInstruction;
 
 	/**
 	 * FOLLOWED BY 32 BYTES -
@@ -538,6 +541,12 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var MAP_STACK:ByteInstruction;
 
 	/**
+	 * FOLLOWED BY 0 BYTES -
+	 * Loads stack[stackTop] as the variables for the program.
+	 */
+	var LOAD_TABLES:ByteInstruction;
+
+	/**
 	 * FOLLOWED BY 32 BYTES -
 	 * END: following bytes encoded as a Int.
 	 * 
@@ -586,7 +595,7 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	 * Lets the runtime know a return has happened. Runtime decides to move the byte pointer to INDX based on context.
 	**/
 	var RETURN:ByteInstruction;
-	
+
 	/**
 	 * FOLLOWED BY 8 BYTES -
 	 * CODE: following bytes encoded as a Int8 (USE ByteRuntimeError).
@@ -615,4 +624,17 @@ enum abstract ByteRuntimeError(ByteInt) from ByteInt from Int to ByteInt to Int 
 	 * Throws a hscript error: EInvalidIterator(stack[stackTop])
 	*/
 	var INVALID_ITERATOR:ByteRuntimeError;
+}
+
+enum abstract ByteRuntimeDeclareType(ByteInt) from ByteInt from Int to ByteInt to Int {
+	/**
+	 * Points to the ScriptRuntime's publicVariables.
+	 */
+	var PUBLIC:ByteRuntimeDeclareType = 0x00;
+
+	/**
+	 * Points to the StaticInterp.staticVariables.
+	 */
+	var STATIC:ByteRuntimeDeclareType;
+
 }

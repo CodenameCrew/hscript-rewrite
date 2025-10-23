@@ -41,19 +41,8 @@ class IVariableReference {
 }
 
 @:allow(hscript)
-interface IInterp {
-    private var variablesDeclared:Vector<Bool>;
-    private var variablesValues:Vector<IVariableReference>;
-
-    private var variableNames:Vector<String>;
-    private var variablesLookup:StringMap<Int>;
-
-    private function declare(name:VariableType, value:Dynamic):Dynamic;
-    private function assign(name:VariableType, value:Dynamic):Dynamic;
-}
-
 @:analyzer(optimize, local_dce, fusion, user_var_fusion)
-class Interp implements IInterp {
+class ScriptRuntime {
     /**
      * Our variables used no matter what scope, fastest by far winner when it comes to raw reading and writing.
      * 
@@ -126,18 +115,6 @@ class Interp implements IInterp {
         this.variables = new InterpLocals(this);
     }
 
-    public function execute(expr:Expr):Dynamic {
-        switch (expr.expr) {
-            case EInfo(info, expr):
-                loadTables(info);
-                loadBaseVariables();
-
-                return safeInterpReturnExpr(expr);
-            default:
-                throw error(ECustom("Missing EInfo()"), expr.line);
-        }
-    }
-
     public function reset() {
         this.variablesDeclared = null;
         this.variablesValues = null;
@@ -179,6 +156,132 @@ class Interp implements IInterp {
         variables.loadDefaults();
     }
 
+    private inline function declare(name:VariableType, value:Dynamic):Dynamic {
+        changes.push({
+            name: name,
+            oldDeclared: variablesDeclared[name],
+            oldValue: variablesValues[name]
+        });
+        
+        variablesDeclared[name] = true;
+        variablesValues[name] = new IVariableReference(value);
+
+        return value;
+    }
+
+    private inline function declareReferenced(name:VariableType, ref:IVariableReference):Dynamic {
+        changes.push({
+            name: name,
+            oldDeclared: variablesDeclared[name],
+            oldValue: variablesValues[name]
+        });
+        
+        variablesDeclared[name] = true;
+        variablesValues[name] = ref;
+
+        return ref.r;
+    }
+
+    private inline function assign(name:VariableType, value:Dynamic):Dynamic {
+        variablesDeclared[name] = true;
+        variablesValues[name] = new IVariableReference(value);
+
+        return value;
+    }
+
+    private function duplicate<T>(vector:Vector<T>):Vector<T> {
+        var newVector:Vector<T> = new Vector(vector.length);
+        for (i in 0...vector.length) newVector[i] = vector[i];
+        return newVector;
+	}
+
+    private inline function store():Int {return changes.length;}
+
+	private inline function restore(oldChangesIndex:Int) {
+        while (changes.length > oldChangesIndex) {
+            var change:IDeclaredVariable = changes.pop();
+            var name:VariableType = change.name;
+
+            if (change.oldDeclared) {
+                variablesDeclared[name] = change.oldDeclared;
+                variablesValues[name] = change.oldValue;
+            } else {
+                variablesDeclared[name] = false;
+                variablesValues[name] = new IVariableReference(null);
+            }
+        }
+	}
+
+    /**
+     * !!!USE THIS FUNCTION TO FIND THINGS THAT ARE NOT DEFINED BY SCRIPT!!!
+     * Idents go to the resolve function when they aren't defined in the local scope of the program.
+     * 
+     * For example:
+     * public var x:Float = 1;
+     * static var y:Float = 3;
+     * var z:Float = 3;
+     * 
+     * x += 2; calls resolve, not local
+     * y += 2; calls resolve, not local
+     * 
+     * z += 2; does not call resolve, local
+     */
+    private function resolve(varName:String):Dynamic {
+        error(EUnknownVariable(varName), this.lineNumber);
+    }
+
+    private function resolveGlobal(ident:VariableType):Dynamic {
+        var varName:String = variableNames[ident];
+                
+        if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
+        if (publicVariables != null && publicVariables.exists(varName)) return publicVariables.get(varName);
+
+        if (hasScriptParent) {
+            if (isScriptParentField(varName)) return getScriptParentField(varName);
+            if (isScriptParentField('get_$varName')) return getScriptParentField('get_$varName')();
+        }
+
+        return resolve(varName);
+    }
+
+    private inline function isScriptParentField(field:String):Bool {
+        return scriptParentFields.exists(field);
+    }
+    
+    private inline function getScriptParentField(field:String):Dynamic {
+        switch (scriptParentType) {
+            case ISObject: return StaticInterp.getObjectField(scriptParent, field);
+            case ISNone: return null;
+        }
+    }
+
+    private inline function setScriptParentField(field:String, value:Dynamic):Dynamic {
+        switch (scriptParentType) {
+            case ISObject: return StaticInterp.setObjectField(scriptParent, field, value);
+            case ISNone: return null;
+        }
+    }
+
+    private inline function error(err:ErrorDef, ?line:Int):Dynamic {
+		throw new Error(err, null, null, this.fileName, line ?? this.lineNumber+1);
+        return null;
+	}
+}
+
+@:analyzer(optimize, local_dce, fusion, user_var_fusion)
+class Interp extends ScriptRuntime {
+    public function execute(expr:Expr):Dynamic {
+        switch (expr.expr) {
+            case EInfo(info, expr):
+                loadTables(info);
+                loadBaseVariables();
+
+                return safeInterpReturnExpr(expr);
+            default:
+                throw error(ECustom("Missing EInfo()"), expr.line);
+        }
+    }
+
     private function interpExpr(expr:Expr):Dynamic {
         if (expr == null) return null;
 
@@ -195,7 +298,7 @@ class Interp implements IInterp {
                         return null;
                     }
                     if (isPublic && publicVariables != null) {
-                        publicVariables.set(variableNames[name], interpExpr(init));
+                        publicVariables.set(varName, interpExpr(init));
                         return null;
                     }
                 }
@@ -703,117 +806,6 @@ class Interp implements IInterp {
 
         return assignValue;
     }
-
-    private inline function declare(name:VariableType, value:Dynamic):Dynamic {
-        changes.push({
-            name: name,
-            oldDeclared: variablesDeclared[name],
-            oldValue: variablesValues[name]
-        });
-        
-        variablesDeclared[name] = true;
-        variablesValues[name] = new IVariableReference(value);
-
-        return value;
-    }
-
-    private inline function declareReferenced(name:VariableType, ref:IVariableReference):Dynamic {
-        changes.push({
-            name: name,
-            oldDeclared: variablesDeclared[name],
-            oldValue: variablesValues[name]
-        });
-        
-        variablesDeclared[name] = true;
-        variablesValues[name] = ref;
-
-        return ref.r;
-    }
-
-    private inline function assign(name:VariableType, value:Dynamic):Dynamic {
-        variablesDeclared[name] = true;
-        variablesValues[name].r = value;
-
-        return value;
-    }
-
-    private function duplicate<T>(vector:Vector<T>):Vector<T> {
-        var newVector:Vector<T> = new Vector(vector.length);
-        for (i in 0...vector.length) newVector[i] = vector[i];
-        return newVector;
-	}
-
-    private inline function store():Int {return changes.length;}
-
-	private inline function restore(oldChangesIndex:Int) {
-        while (changes.length > oldChangesIndex) {
-            var change:IDeclaredVariable = changes.pop();
-            var name:VariableType = change.name;
-
-            if (change.oldDeclared) {
-                variablesDeclared[name] = change.oldDeclared;
-                variablesValues[name] = change.oldValue;
-            } else {
-                variablesDeclared[name] = false;
-                variablesValues[name] = new IVariableReference(null);
-            }
-        }
-	}
-
-    /**
-     * !!!USE THIS FUNCTION TO FIND THINGS THAT ARE NOT DEFINED BY SCRIPT!!!
-     * Idents go to the resolve function when they aren't defined in the local scope of the program.
-     * 
-     * For example:
-     * public var x:Float = 1;
-     * static var y:Float = 3;
-     * var z:Float = 3;
-     * 
-     * x += 2; calls resolve, not local
-     * y += 2; calls resolve, not local
-     * 
-     * z += 2; does not call resolve, local
-     */
-    private function resolve(varName:String):Dynamic {
-        error(EUnknownVariable(varName), this.lineNumber);
-    }
-
-    private function resolveGlobal(ident:VariableType):Dynamic {
-        var varName:String = variableNames[ident];
-                
-        if (StaticInterp.staticVariables.exists(varName)) return StaticInterp.staticVariables.get(varName);
-        if (publicVariables != null && publicVariables.exists(varName)) return publicVariables.get(varName);
-
-        if (hasScriptParent) {
-            if (isScriptParentField(varName)) return getScriptParentField(varName);
-            if (isScriptParentField('get_$varName')) return getScriptParentField('get_$varName')();
-        }
-
-        return resolve(varName);
-    }
-
-    private inline function isScriptParentField(field:String):Bool {
-        return scriptParentFields.exists(field);
-    }
-    
-    private inline function getScriptParentField(field:String):Dynamic {
-        switch (scriptParentType) {
-            case ISObject: return StaticInterp.getObjectField(scriptParent, field);
-            case ISNone: return null;
-        }
-    }
-
-    private inline function setScriptParentField(field:String, value:Dynamic):Dynamic {
-        switch (scriptParentType) {
-            case ISObject: return StaticInterp.setObjectField(scriptParent, field, value);
-            case ISNone: return null;
-        }
-    }
-
-    private inline function error(err:ErrorDef, ?line:Int):Dynamic {
-		throw new Error(err, null, null, this.fileName, line ?? this.lineNumber+1);
-        return null;
-	}
 }
 
 class StaticInterp {
@@ -1006,9 +998,9 @@ class InterpLocals {
 		useDefaults = false;
 		for (key => value in defaultsValues) set(key, value);
 	}
-	public var parent:IInterp;
+	public var parent:ScriptRuntime;
 
-	public function new(parent:IInterp)
+	public function new(parent:ScriptRuntime)
 		this.parent = parent;
 
 	public inline function set(key:String, value:Dynamic) {

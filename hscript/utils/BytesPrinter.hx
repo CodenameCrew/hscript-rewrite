@@ -87,7 +87,7 @@ class BytesPrinter {
             case BINOP_EQ: "BINOP ==";
             case BINOP_EQ_TRUE: "BINOP == true";
             case BINOP_EQ_NULL: "BINOP == null";
-            case COMPARASION: "COMPARASION";
+            case COMPARASION_EQ: "COMPARASION_EQ";
             case BINOP_NEQ: "BINOP !=";
             case BINOP_GTE: "BINOP >=";
             case BINOP_LTE: "BINOP <=";
@@ -112,17 +112,17 @@ class BytesPrinter {
             case SAVE_MEMORY16: "SAVE_MEMORY16 mem[" + input.readInt16() + "]";
             case SAVE_MEMORY32: "SAVE_MEMORY32 mem[" + input.readInt32() + "]";
 
-            case SAVE_MEMORY8_PUBLIC: "SAVE_MEMORY8_PUBLIC mem[" + input.readInt8() + "]";
-            case SAVE_MEMORY16_PUBLIC: "SAVE_MEMORY16_PUBLIC mem[" + input.readInt16() + "]";
-            case SAVE_MEMORY32_PUBLIC: "SAVE_MEMORY32_PUBLIC mem[" + input.readInt32() + "]";
-
-            case SAVE_MEMORY8_STATIC: "SAVE_MEMORY8_STATIC mem[" + input.readInt8() + "]";
-            case SAVE_MEMORY16_STATIC: "SAVE_MEMORY16_STATIC mem[" + input.readInt16() + "]";
-            case SAVE_MEMORY32_STATIC: "SAVE_MEMORY32_STATIC mem[" + input.readInt32() + "]";
-
             case GOTO: "GOTO " + hex(input.readInt32(), 4);
             case GOTOIF: "GOTOIF " + hex(input.readInt32(), 4);
             case GOTOIFNOT: "GOTOIFNOT " + hex(input.readInt32(), 4);
+
+            case DECLARE_MEMORY8: "DECLARE_MEMORY8 mem[" + input.readInt8() + "]";
+            case DECLARE_MEMORY16: "DECLARE_MEMORY16 mem[" + input.readInt16() + "]";
+            case DECLARE_MEMORY32: "DECLARE_MEMORY32 mem[" + input.readInt32() + "]";
+
+            case DECLARE_TYPED_MEMORY8: "DECLARE_TYPED_MEMORY8 " + "type=" + input.readInt8() + " mem[" +  input.readInt8() + "]";
+            case DECLARE_TYPED_MEMORY16: "DECLARE_TYPED_MEMORY16 " + "type=" + input.readInt8() + " mem[" +  input.readInt16() + "]";
+            case DECLARE_TYPED_MEMORY32: "DECLARE_TYPED_MEMORY32 " + "type=" + input.readInt8() + " mem[" +  input.readInt32() + "]";
 
             case CALL: "CALL";
             case CALL_NOARG: "CALL_NOARG";
@@ -146,6 +146,7 @@ class BytesPrinter {
             case ARRAY_STACK32: "ARRAY_STACK32 len=" + input.readInt32();
 
             case MAP_STACK: "MAP_STACK";
+            case LOAD_TABLES: "LOAD_TABLES";
             case FUNC_STACK: "FUNC_STACK end=" + hex(input.readInt32(), 4);
             case IMPORT: "IMPORT type=" + input.readInt8();
 
