@@ -466,8 +466,6 @@ class ByteCompiler {
                 for (arg in args)
                     write(new Expr(EConst(LCInt(arg.name)), expr.line));
 
-                trace(args.length);
-
                 write(new Expr(EConst(LCInt(args.length)), expr.line));
                 write(new Expr(EConst(name != -1 ? LCInt(name) : LCNull), expr.line));
 

@@ -19,7 +19,6 @@ class Main {
 
 				f++;
 				if (f < 3) b(f);
-				return 3;
 			}
 
 			b(0);
