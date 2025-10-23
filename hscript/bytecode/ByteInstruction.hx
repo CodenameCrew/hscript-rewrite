@@ -538,6 +538,18 @@ enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
 	var MAP_STACK:ByteInstruction;
 
 	/**
+	 * FOLLOWED BY 32 BYTES -
+	 * END: following bytes encoded as a Int.
+	 * 
+	 * Creates a reflective function with variables from the stack:
+	 * Stack [..., isStatic, isPublic, (0...argcount) arg.name, (0...argcount) arg.opt, argcount, name]
+	 * 
+	 * Also declares the function if the depth is 0.
+	 * Pushes the resulting function to stack[stackTop].
+	*/
+	var FUNC_STACK:ByteInstruction;
+
+	/**
 	 * FOLLOWED BY 8 BYTES -
 	 * TYPE: Defined by the first bytes as a Int8
 	 * Resolves a import with stack[stackTop].

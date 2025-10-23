@@ -454,7 +454,28 @@ class ByteCompiler {
                 }
 
                 bake(endPointer);
-            default:
+            case EFunction(args, body, name, isPublic, isStatic):
+                var endPointer:BInstructionPointer = pointer();
+
+                write(new Expr(EConst(LCBool(isPublic)), expr.line));
+                write(new Expr(EConst(LCBool(isStatic)), expr.line));
+
+                for (arg in args)
+                    write(new Expr(EConst(LCBool(arg.opt)), expr.line));
+
+                for (arg in args)
+                    write(new Expr(EConst(LCInt(arg.name)), expr.line));
+
+                trace(args.length);
+
+                write(new Expr(EConst(LCInt(args.length)), expr.line));
+                write(new Expr(EConst(name != -1 ? LCInt(name) : LCNull), expr.line));
+
+                jump(endPointer, FUNC_STACK);
+
+                write(body);
+
+                bake(endPointer);
         }
 
         if (appendsOntoStack(expr) && !used) buffer.writeInt8(POP);

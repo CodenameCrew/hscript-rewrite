@@ -14,19 +14,22 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-			var i = 0;
-			switch (i) {
-				case 0: trace(32);
+			function b(f:Int) {
+				trace(f);
+
+				f++;
+				if (f < 3) b(f);
+				return 3;
 			}
+
+			b(0);
 		');
 
 		var interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}
-		// interp.execute(expr);
+		interp.execute(expr);
 
 		trace(ExprUtils.print(expr, true));
-		var const:Expr = ConstEval.eval(expr);
-		trace(ExprUtils.print(const, true));
 
 		var comp:ByteCompiler = new ByteCompiler();
 		var byteCode:Bytes = comp.compile(expr);

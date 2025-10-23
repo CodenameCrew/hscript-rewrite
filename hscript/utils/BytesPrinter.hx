@@ -146,6 +146,7 @@ class BytesPrinter {
             case ARRAY_STACK32: "ARRAY_STACK32 len=" + input.readInt32();
 
             case MAP_STACK: "MAP_STACK";
+            case FUNC_STACK: "FUNC_STACK end=" + hex(input.readInt32(), 4);
             case IMPORT: "IMPORT type=" + input.readInt8();
 
             case POP: "POP";
