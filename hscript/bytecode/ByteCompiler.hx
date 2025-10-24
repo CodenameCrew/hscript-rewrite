@@ -272,7 +272,7 @@ class ByteCompiler {
                 bake(bodyPointer);
 
                 writeop(ITERATOR_HASNEXT);
-                writearg(BINOP_EQ_TRUE);
+                writeop(BINOP_EQ_TRUE);
 
                 jump(endPointer, GOTOIFNOT);
                 writeop(ITERATOR_NEXT);

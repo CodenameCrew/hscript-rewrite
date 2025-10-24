@@ -1,6 +1,6 @@
 package hscript.bytecode;
 
-typedef ByteInt = Ast.UInt8;
+typedef ByteInt = Int;
 
 @:structInit
 class ByteChunk {
@@ -10,12 +10,12 @@ class ByteChunk {
 	public var constants:Array<Dynamic> = [];
 }
 
-enum abstract ByteInstruction(ByteInt) from ByteInt from Int to ByteInt to Int {
+enum abstract ByteInstruction(ByteInt) from Int to Int {
 	/**
 	 * FOLLOWED BY 1 ARGS -
 	 * Pushes the following bytes encoded as a Int to the top of the stack.
 	 */
-	var PUSH_CONST:ByteInstruction = 0x00;
+	var PUSH_CONST:ByteInstruction = 0;
 
 	/**
 	 * FOLLOWED BY 0 ARGS -
