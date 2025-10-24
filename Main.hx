@@ -1,9 +1,9 @@
 package;
 
+import hscript.bytecode.ByteInstruction.ByteChunk;
+import haxe.Timer;
 import hscript.bytecode.ByteVM;
-import hscript.Ast.Expr;
 import hscript.anaylzers.ConstEval;
-import haxe.io.Bytes;
 import hscript.utils.ExprUtils;
 import hscript.utils.BytesPrinter;
 import hscript.bytecode.ByteCompiler;
@@ -18,7 +18,6 @@ class Main {
 			var a = []; 
 			for (i in 0...1000) a.push(i * 2 + 1 / 6); 
 			if(true == true) a.push(1);
-			if(2 == true && true || false) a.push(1);
 			a[0];
 		');
 
@@ -27,14 +26,22 @@ class Main {
 		trace(ExprUtils.print(expr, true));
 
 		var comp:ByteCompiler = new ByteCompiler();
-		var byteCode:Bytes = comp.compile(expr);
-		trace(byteCode.toHex(), byteCode.length);
+		var byteCode:ByteChunk = comp.compile(expr);
+		trace(byteCode, byteCode.instructions.length);
 
 		Sys.println(BytesPrinter.print(byteCode));
+
+		var interp:Interp = new Interp("Main.hx");
+		interp.errorHandler = (error:Error) -> {Sys.println(error);}
 
 		Sys.println("");
 		var vm:ByteVM = new ByteVM("Main.hx");
 		vm.errorHandler = (error:Error) -> {Sys.println(error);}
-		vm.execute(byteCode);
+
+		var time:Float = Timer.stamp();
+		for (i in 0...2000)
+			vm.execute(byteCode);
+		trace(Timer.stamp() - time);
+
     }
 }

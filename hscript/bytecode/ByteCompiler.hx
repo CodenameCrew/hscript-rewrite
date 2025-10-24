@@ -5,12 +5,7 @@ import haxe.ds.Vector;
 import hscript.Ast;
 import haxe.io.BytesOutput;
 import hscript.bytecode.ByteInstruction;
-
-enum BIntSize {
-	BIInt8(int:Int);
-	BIInt16(int:Int);
-	BIInt32(int:Int);
-}
+import hscript.Interp.StaticInterp;
 
 class BInstructionPointer {
     public var position:Int;
@@ -20,21 +15,16 @@ class BInstructionPointer {
 }
 
 class ByteCompiler {
-    public var buffer:BytesOutput;
+    public var buffer:ByteChunk;
 
     public function new() {
-        buffer = new BytesOutput();
+        buffer = {};
     }
 
-	private var variableNames:Vector<String>;
-    private function loadTables(info:VariableInfo) {
-		variableNames = Vector.fromArrayCopy(info);
-	}
-
-    public function compile(expr:Expr):Bytes {
+    public function compile(expr:Expr):ByteChunk {
         try {
             start(expr);
-            return buffer.getBytes();
+            return buffer;
         } catch (e)
             return null;
     }
@@ -55,87 +45,30 @@ class ByteCompiler {
         switch (expr.expr) {
             case EInfo(info, expr): 
                 array([for (varName in info) new Expr(EConst(LCString(varName)), expr.line)]);
-                buffer.writeInt8(LOAD_TABLES);
+                writeop(LOAD_TABLES);
 
                 write(expr);
             case EIdent(name):
-                switch (shrink(name)) {
-                    case BIInt8(_):
-                        buffer.writeInt8(PUSH_MEMORY8);
-                        buffer.writeInt8(name);
-                    case BIInt16(_):
-                        buffer.writeInt8(PUSH_MEMORY16);
-                        buffer.writeInt16(name);
-                    case BIInt32(_):
-                        buffer.writeInt8(PUSH_MEMORY32);
-                        buffer.writeInt32(name);
-                }
+                writeop(PUSH_MEMORY);
+                writearg(name);
             case EConst(c):
-                switch (c) {
-                    case LCInt(int):
-                        if (int == 0) buffer.writeInt8(PUSH_ZERO);
-                        else if (int == 1) buffer.writeInt8(PUSH_POSITIVE_ONE);
-                        else if (int == -1) buffer.writeInt8(PUSH_NEGATIVE_ONE);
-                        else {
-                            switch (shrink(int)) {
-                                case BIInt8(_):
-                                    buffer.writeInt8(PUSH_INT8);
-                                    buffer.writeInt8(int);
-                                case BIInt16(_):
-                                    buffer.writeInt8(PUSH_INT16);
-                                    buffer.writeInt16(int);
-                                case BIInt32(_):
-                                    buffer.writeInt8(PUSH_INT32);
-                                    buffer.writeInt32(int);
-                            }
-                        }
-                    case LCFloat(float):
-                        if (float == Math.PI) buffer.writeInt8(PUSH_PI);
-                        else if (float == Math.POSITIVE_INFINITY) buffer.writeInt8(PUSH_POSITIVE_INFINITY);
-                        else if (float == Math.NEGATIVE_INFINITY) buffer.writeInt8(PUSH_NEGATIVE_INFINITY);
-                        else {
-                            buffer.writeInt8(PUSH_FLOAT);
-                            buffer.writeFloat(float);
-                        }
-                    case LCString(string):
-                        if (string == "") buffer.writeInt8(PUSH_EMPTY_STRING);
-                        else if (string == " ") buffer.writeInt8(PUSH_SPACE_STRING);
-                        else {
-                            switch (shrink(string.length)) {
-                                case BIInt8(_):
-                                    buffer.writeInt8(PUSH_STRING8);
-                                    buffer.writeInt8(string.length);
-                                    buffer.writeString(string);
-                                case BIInt16(_):
-                                    buffer.writeInt8(PUSH_STRING16);
-                                    buffer.writeInt16(string.length);
-                                    buffer.writeString(string);
-                                default:
-                                    buffer.writeInt8(PUSH_STRING32);
-                                    buffer.writeInt32(string.length);
-                                    buffer.writeString(string);
-                            }
-                        }
-                    case LCBool(bool):
-                        if (bool) buffer.writeInt8(PUSH_TRUE);
-                        else buffer.writeInt8(PUSH_FALSE);
-                    case LCNull: buffer.writeInt8(PUSH_NULL);
-                }
+                writeop(PUSH_CONST);
+                writearg(const(StaticInterp.evaluateConst(c)));
             case EBinop(op, left, right):
                 switch (op) {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN:
                         switch (left.expr) {
                             case EIdent(_) | EField(_) | EArray(_): write(left);
                             default:
-                                buffer.writeInt8(ERROR);
-                                buffer.writeInt8(INVALID_ASSIGN);
+                                writeop(ERROR);
+                                writearg(INVALID_ASSIGN);
 
                                 return;
                         }
 
                         write(right);
 
-                        buffer.writeInt8(switch (op) {
+                        writeop(switch (op) {
                             case ADD_ASSIGN: BINOP_ADD;
                             case SUB_ASSIGN: BINOP_SUB;
                             case MULT_ASSIGN: BINOP_MULT;
@@ -152,13 +85,13 @@ class ByteCompiler {
 
                         assign(left);
                     case ASSIGN:
-                        write(right); // push right to stack
+                        write(right);
                         assign(left);
                     default:
                         write(left);
                         write(right);
 
-                        buffer.writeInt8(switch (op) {
+                        writeop(switch (op) {
                             case ADD: BINOP_ADD;
                             case SUB: BINOP_SUB;
                             case MULT: BINOP_MULT;
@@ -184,20 +117,18 @@ class ByteCompiler {
                             case IS: BINOP_IS;
                             case NCOAL: BINOP_NCOAL;
 
-                            case INTERVAL: BINOP_INTERVAL;
-                            default: PUSH_NULL;
+                            default: BINOP_INTERVAL;
                         });
                 }
             case EVar(name, init, isPublic, isStatic):
                 if (init != null) write(init);
-                else buffer.writeInt8(PUSH_NULL);
+                else write(new Expr(EConst(LCNull), expr.line));
 
-                var type:Null<ByteRuntimeDeclareType> = null;
+                var type:Null<ByteRuntimeDeclareType> = ByteRuntimeDeclareType.LOCAL;
                 if (isPublic) type = ByteRuntimeDeclareType.PUBLIC;
                 if (isStatic) type = ByteRuntimeDeclareType.STATIC;
 
                 declare(name, type);
-
             case EIf(cond, thenExpr, elseExpr) | ETernary(cond, thenExpr, elseExpr):
                 // EIf's must return null even if the condition is not met
                 var retElseExpr:Expr = elseExpr == null ? new Expr(EConst(LCNull), thenExpr.line) : elseExpr;
@@ -224,31 +155,31 @@ class ByteCompiler {
                 write(expr); // object
                 write(new Expr(EConst(LCString(field)), expr.line)); // field
 
-                if (isSafe) buffer.writeInt8(FIELD_GET_SAFE);
-                else buffer.writeInt8(FIELD_GET);
+                if (isSafe) writeop(FIELD_GET_SAFE);
+                else writeop(FIELD_GET);
             case EArray(expr, index):
                 write(expr); // array
                 write(index); // index
 
-                buffer.writeInt8(ARRAY_GET);
+                writeop(ARRAY_GET);
             case EUnop(op, isPrefix, expr):
                 switch (op) {
                     case INC: write(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(1)), expr.line)), expr.line));
                     case DEC: write(new Expr(EBinop(ADD_ASSIGN, expr, new Expr(EConst(LCInt(-1)), expr.line)), expr.line));
                     case NEG: 
                         write(expr);
-                        buffer.writeInt8(UNOP_NEG);
+                        writeop(UNOP_NEG);
                     case NEG_BIT: 
                         write(expr);
-                        buffer.writeInt8(UNOP_NEG_BIT);
+                        writeop(UNOP_NEG_BIT);
                     case NOT: 
                         write(expr);
-                        buffer.writeInt8(UNOP_NOT);
+                        writeop(UNOP_NOT);
                 }
             case ECall(func, args):
                 write(func);
                 array(args);
-                buffer.writeInt8(CALL);
+                writeop(CALL);
             case EWhile(cond, body):
                 var endPointer:BInstructionPointer = pointer();
                 var condPointer:BInstructionPointer = pointer();
@@ -285,66 +216,66 @@ class ByteCompiler {
             case EArrayDecl(items): array(items);
             case EMapDecl(keys, values):
                 if (keys.length == 0 && values.length == 0)
-                    buffer.writeInt8(PUSH_MAP);
+                    writeop(PUSH_MAP);
                 else {
                     array(keys);
                     array(values);
 
-                    buffer.writeInt8(MAP_STACK);
+                    writeop(MAP_STACK);
                 }
             case ENew(className, args):
                 write(new Expr(EIdent(className), expr.line));
                 array(args);
 
-                buffer.writeInt8(NEW);
+                writeop(NEW);
             case EBreak:
                 var breakPointer:BInstructionPointer = getbreak();
                 if (breakPointer != null) jump(breakPointer);
                 else {
-                    buffer.writeInt8(ERROR);
-                    buffer.writeInt8(INVALID_BREAK);
+                    writeop(ERROR);
+                    writearg(INVALID_BREAK);
                 }
             case EContinue:
                 var continuePointer:BInstructionPointer = getcontinue();
                 if (continuePointer != null) jump(continuePointer);
                 else {
-                    buffer.writeInt8(ERROR);
-                    buffer.writeInt8(INVALID_CONTINUE);
+                    writeop(ERROR);
+                    writearg(INVALID_CONTINUE);
                 }
             case EReturn(expr):
                 if (expr != null) write(expr);
                 var returnPointer:BInstructionPointer = getreturn();
                 if (returnPointer != null) jump(returnPointer, RETURN);
             case EObject(fields):
-                buffer.writeInt8(PUSH_OBJECT);
+                writeop(PUSH_OBJECT);
                 for (field in fields) {
                     write(new Expr(EConst(LCString(field.name)), field.expr.line));
                     write(field.expr);
-                    buffer.writeInt8(OBJECT_SET);
+                    writeop(OBJECT_SET);
                 }
             case EFor(varName, iterator, body):
                 var bodyPointer:BInstructionPointer = pointer();
                 var endPointer:BInstructionPointer = pointer();
 
                 write(iterator);
-                buffer.writeInt8(MAKE_ITERATOR);
-                buffer.writeInt8(PUSH_NULL);
-                buffer.writeInt8(COMPARASION_EQ);
+                writeop(MAKE_ITERATOR);
+                writenull(iterator);
+                writeop(COMPARASION_EQ);
 
                 jump(bodyPointer, GOTOIFNOT);
 
-                buffer.writeInt8(ERROR);
-                buffer.writeInt8(INVALID_ITERATOR);
+                writeop(ERROR);
+                writearg(INVALID_ITERATOR);
 
                 jump(endPointer);
 
                 bake(bodyPointer);
 
-                buffer.writeInt8(ITERATOR_HASNEXT);
-                buffer.writeInt8(BINOP_EQ_TRUE);
+                writeop(ITERATOR_HASNEXT);
+                writearg(BINOP_EQ_TRUE);
 
                 jump(endPointer, GOTOIFNOT);
-                buffer.writeInt8(ITERATOR_NEXT);
+                writeop(ITERATOR_NEXT);
                 declare(varName);
 
                 write(body, false);
@@ -356,24 +287,24 @@ class ByteCompiler {
                 var endPointer:BInstructionPointer = pointer();
 
                 write(iterator);
-                buffer.writeInt8(MAKE_KEYVALUE_ITERATOR);
-                buffer.writeInt8(PUSH_NULL);
-                buffer.writeInt8(COMPARASION_EQ);
+                writeop(MAKE_KEYVALUE_ITERATOR);
+                writenull(iterator);
+                writeop(COMPARASION_EQ);
 
                 jump(bodyPointer, GOTOIFNOT);
 
-                buffer.writeInt8(ERROR);
-                buffer.writeInt8(INVALID_ITERATOR);
+                writeop(ERROR);
+                writearg(INVALID_ITERATOR);
 
                 jump(endPointer);
                 
                 bake(bodyPointer);
 
-                buffer.writeInt8(ITERATOR_HASNEXT);
-                buffer.writeInt8(BINOP_EQ_TRUE);
+                writeop(ITERATOR_HASNEXT);
+                writeop(BINOP_EQ_TRUE);
 
                 jump(endPointer, GOTOIFNOT);
-                buffer.writeInt8(ITERATOR_KEYVALUE_NEXT);
+                writeop(ITERATOR_KEYVALUE_NEXT);
                 declare(value);
                 declare(key);
 
@@ -400,7 +331,7 @@ class ByteCompiler {
                 bake(endPointer);
             case EThrow(expr):
                 write(expr);
-                buffer.writeInt8(THROW);
+                writeop(THROW);
             case EMeta(name, args, expr): write(expr);
             case EImport(path, mode):
                 switch (mode) {
@@ -410,8 +341,8 @@ class ByteCompiler {
 
                 write(new Expr(EConst(LCString(path)), expr.line));
 
-                buffer.writeInt8(IMPORT);
-                buffer.writeInt8(switch (mode) {
+                writeop(IMPORT);
+                writearg(switch (mode) {
                     case Normal: 0;
                     case As(_): 1;
                     case All: 2;
@@ -425,13 +356,13 @@ class ByteCompiler {
                 for (i => switchCase in cases) {
                     for (value in switchCase.values) {
                         write(value);
-                        buffer.writeInt8(COMPARASION_EQ);
+                        writeop(COMPARASION_EQ);
                         jump(casePointers[i], GOTOIF);
                     }
                 }
 
                 if (defaultExpr != null) {
-                    buffer.writeInt8(POP);
+                    writeop(POP);
                     write(defaultExpr);
                 }
                 jump(endPointer);
@@ -439,7 +370,7 @@ class ByteCompiler {
                 for (i => switchCase in cases) {
                     bake(casePointers[i]);
 
-                    buffer.writeInt8(POP);
+                    writeop(POP);
                     write(switchCase.expr);
 
                     jump(endPointer);
@@ -468,87 +399,51 @@ class ByteCompiler {
                 bake(endPointer);
         }
 
-        if (appendsOntoStack(expr) && !used) buffer.writeInt8(POP);
+        if (appendsOntoStack(expr) && !used) writeop(POP);
     }
 
     private inline function array(arr:Array<Expr>) {
         if (arr.length == 0)
-            buffer.writeInt8(PUSH_ARRAY);
+            writeop(PUSH_ARRAY);
         else {
             for (i in arr) write(i);
 
-            switch (shrink(arr.length)) {
-                case BIInt8(_): 
-                    buffer.writeInt8(ARRAY_STACK8);
-                    buffer.writeInt8(arr.length);
-                case BIInt16(_):
-                    buffer.writeInt8(ARRAY_STACK16);
-                    buffer.writeInt16(arr.length);
-                case BIInt32(_):
-                    buffer.writeInt8(ARRAY_STACK32);
-                    buffer.writeInt32(arr.length);
-            }
+            writeop(ARRAY_STACK);
+            writearg(arr.length);
         }
     }
 
     private inline function assign(eqExpr:Expr) {
         switch (eqExpr.expr) { 
             case EIdent(name): 
-                switch (shrink(name)) {
-                    case BIInt8(_): 
-                        buffer.writeInt8(SAVE_MEMORY8);
-                        buffer.writeInt8(name);
-                    case BIInt16(_):
-                        buffer.writeInt8(SAVE_MEMORY16);
-                        buffer.writeInt16(name);
-                    default: 
-                }
+                writeop(SAVE_MEMORY);
+                writearg(name);
             case EField(expr, field, isSafe):
                 write(expr); // object
                 write(new Expr(EConst(LCString(field)), eqExpr.line)); // field
 
-                if (isSafe) buffer.writeInt8(FIELD_SET_SAFE);
-                else buffer.writeInt8(FIELD_SET);
+                if (isSafe) writeop(FIELD_SET_SAFE);
+                else writeop(FIELD_SET);
             case EArray(expr, index):
                 write(expr); // array
                 write(index); // index
 
-                buffer.writeInt8(ARRAY_SET);
+                writeop(ARRAY_SET);
             default: 
-                buffer.writeInt8(ERROR);
-                buffer.writeInt8(INVALID_ASSIGN);
+                writeop(ERROR);
+                writearg(INVALID_ASSIGN);
 
-                buffer.writeInt8(POP); // restore stack
+                writeop(POP); // restore stack
         }
     }
 
-    private inline function declare(name:Int, type:Null<ByteRuntimeDeclareType> = null) {
-        switch (shrink(name)) {
-            case BIInt8(_):
-                if (type != null) {
-                    buffer.writeInt8(DECLARE_TYPED_MEMORY8);
-                    buffer.writeInt8(type);
-                }
-                else buffer.writeInt8(DECLARE_MEMORY8);
-
-                buffer.writeInt8(name);
-            case BIInt16(_):
-                if (type != null) {
-                    buffer.writeInt8(DECLARE_TYPED_MEMORY16);
-                    buffer.writeInt8(type);
-                }
-                else buffer.writeInt8(DECLARE_MEMORY16);
-
-                buffer.writeInt16(name);
-            case BIInt32(_): 
-                if (type != null) {
-                    buffer.writeInt8(DECLARE_TYPED_MEMORY32);
-                    buffer.writeInt8(type);
-                }
-                else buffer.writeInt8(DECLARE_MEMORY32);
-
-                buffer.writeInt32(name);
-        }
+    private inline function declare(name:Int, type:Null<ByteRuntimeDeclareType> = LOCAL) {
+        writeop(switch (type) {
+            case PUBLIC: DECLARE_PUBLIC_MEMORY;
+            case STATIC: DECLARE_STATIC_MEMORY;
+            case LOCAL: DECLARE_MEMORY;
+        });
+        writearg(name);
     }
 
     private function appendsOntoStack(expr:Expr):Bool {
@@ -563,6 +458,20 @@ class ByteCompiler {
                 }
         }
     }
+
+    private inline function writeop(instruction:ByteInstruction) {buffer.instructions.push(instruction); buffer.instruction_args.push(0);}
+    private inline function writearg(arg:Int) buffer.instruction_args[buffer.instructions.length > 0 ? buffer.instructions.length-1 : 0] = arg;
+
+    private inline function const(const:Dynamic):Int {
+        var cosntID:Int = buffer.constants.indexOf(const);
+        if (cosntID == -1) {
+            buffer.constants.push(const);
+            return buffer.constants.length-1;
+        } else return cosntID;
+    }
+
+    private inline function writenull(expr:Expr)
+        write(new Expr(EConst(LCNull), expr.line));
 
     /**
      * Static implementation of interpLoop(expr) in Interp.hx
@@ -602,7 +511,7 @@ class ByteCompiler {
      * @param pointer 
      */
     private inline function bake(pointer:BInstructionPointer) {
-        pointer.position = buffer.length;
+        pointer.position = buffer.instructions.length > 0 ? buffer.instructions.length-1 : 0;
     }
 
     /**
@@ -610,28 +519,13 @@ class ByteCompiler {
      * @param pointer 
      */
     private inline function jump(pointer:BInstructionPointer, jumpCode:ByteInstruction = GOTO) {
-        buffer.writeInt8(jumpCode);
-        pointer.temps.push(buffer.length);
-        buffer.writeInt32(0);
+        writeop(jumpCode);
+        pointer.temps.push(buffer.instruction_args.length-1);
     }
 
     private function writePointers() {
-        var bytes:Bytes = buffer.getBytes();
-        
         for (pointer in pointers)
             for (temp in pointer.temps) 
-                bytes.setInt32(temp, pointer.position);
-        
-        var newBuffer:BytesOutput = new BytesOutput();
-        newBuffer.write(bytes);
-        buffer = newBuffer;
+                buffer.instruction_args[temp] = pointer.position;
     }
-
-    private static inline function shrink(int:Int):BIntSize {
-		if (int > -0x80 && int <= 0x80) // https://github.com/HaxeFoundation/haxe/blob/4.3.7/std/haxe/io/BytesOutput.hx#L92
-			return BIInt8(int);
-		if (int > -0x8000 && int <= 0x8000) // https://github.com/HaxeFoundation/haxe/blob/4.3.7/std/haxe/io/BytesOutput.hx#L99
-			return BIInt16(int);
-		return BIInt32(int);
-	}
 }

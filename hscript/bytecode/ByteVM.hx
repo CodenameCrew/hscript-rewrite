@@ -14,51 +14,39 @@ import hscript.bytecode.ByteInstruction;
 import haxe.io.Bytes;
 
 class ByteVM extends ScriptRuntime {
-	public var bytes:Bytes;
-	private var reader:UnsafeBytesInput;
+	public var instructions:Array<ByteInstruction> = [];
+	public var instruction_args:Array<Int> = [];
+
+	public var constants:Array<Dynamic> = [];
+	public var pointer:Int = 0;
 
 	private var stack:Array<Dynamic>;
 
-	public function execute(bytes:Bytes) {
-		this.bytes = bytes;
+	public function execute(bytes:ByteChunk) {
+		this.instructions = bytes.instructions;
+		this.instruction_args = bytes.instruction_args;
 
-		this.reader = new UnsafeBytesInput(bytes);
+		this.constants = bytes.constants;
+		this.pointer = -1;
+
 		this.stack = new Array<Dynamic>();
 
-		executebytes(bytes.length);
-
+		executeinstructions(bytes.instructions.length);
 	}
 
-	public function executebytes(end:Int) {
-		while (reader.position < end) {
+	public function executeinstructions(end:Int) {
+		while (pointer < end) {
 			execute_instruction();
 		};
 	}
 
 	public function execute_instruction():Void {
-		var opcode:ByteInstruction = reader.readInt8();
-		switch (opcode) {
-			case ByteInstruction.PUSH_INT8: stack.push(reader.readInt8());
-			case ByteInstruction.PUSH_INT16: stack.push(reader.readInt16());
-			case ByteInstruction.PUSH_INT32: stack.push(reader.readInt32());
-			case ByteInstruction.PUSH_FLOAT: stack.push(reader.readFloat());
-			case ByteInstruction.PUSH_STRING8: stack.push(reader.readString(reader.readInt8()));
-			case ByteInstruction.PUSH_STRING16: stack.push(reader.readString(reader.readInt16()));
-			case ByteInstruction.PUSH_STRING32: stack.push(reader.readString(reader.readInt32()));
-			case ByteInstruction.PUSH_NULL: stack.push(null);
-			case ByteInstruction.PUSH_TRUE: stack.push(true);
-			case ByteInstruction.PUSH_FALSE: stack.push(false);
-			case ByteInstruction.PUSH_EMPTY_STRING: stack.push("");
-			case ByteInstruction.PUSH_SPACE_STRING: stack.push(" ");
+		pointer++;
+		switch (instructions[pointer]) {
+			case ByteInstruction.PUSH_CONST: stack.push(constants[instruction_args[pointer]]);
 			case ByteInstruction.PUSH_ARRAY: stack.push([]);
 			case ByteInstruction.PUSH_MAP: stack.push(new haxe.ds.Map<Dynamic, Dynamic>());
 			case ByteInstruction.PUSH_OBJECT: stack.push({});
-			case ByteInstruction.PUSH_ZERO: stack.push(0);
-			case ByteInstruction.PUSH_POSITIVE_ONE: stack.push(1);
-			case ByteInstruction.PUSH_NEGATIVE_ONE: stack.push(-1);
-			case ByteInstruction.PUSH_NEGATIVE_INFINITY: stack.push(Math.NEGATIVE_INFINITY);
-			case ByteInstruction.PUSH_POSITIVE_INFINITY: stack.push(Math.POSITIVE_INFINITY);
-			case ByteInstruction.PUSH_PI: stack.push(Math.PI);
 			case ByteInstruction.BINOP_ADD:
 				var right:Null<Dynamic> = stack.pop();
 				var left:Null<Dynamic> = stack.pop();
@@ -180,59 +168,28 @@ class ByteVM extends ScriptRuntime {
 			case ByteInstruction.UNOP_NEG_BIT: stack.push(~stack.pop());
 			case ByteInstruction.UNOP_NOT: stack.push(!stack.pop());
 
-			case ByteInstruction.DECLARE_MEMORY8: declare(reader.readInt8(), stack.pop());
-			case ByteInstruction.DECLARE_MEMORY16: declare(reader.readInt16(), stack.pop());
-			case ByteInstruction.DECLARE_MEMORY32: declare(reader.readInt32(), stack.pop());
-
-			case ByteInstruction.DECLARE_TYPED_MEMORY8: 
-				var type:Int = reader.readInt8();
-                var varName:String = variableNames[reader.readInt8()];
-
-				if (type == ByteRuntimeDeclareType.STATIC && !StaticInterp.staticVariables.exists(varName)) {
-					StaticInterp.staticVariables.set(varName, stack.pop());
-				} else if (type == ByteRuntimeDeclareType.PUBLIC && publicVariables != null) {
-					publicVariables.set(varName, stack.pop());
-				} else stack.pop();
-			case ByteInstruction.DECLARE_TYPED_MEMORY16:
-				var type:Int = reader.readInt8();
-                var varName:String = variableNames[reader.readInt16()];
-
-				if (type == ByteRuntimeDeclareType.STATIC && !StaticInterp.staticVariables.exists(varName)) {
-					StaticInterp.staticVariables.set(varName, stack.pop());
-				} else if (type == ByteRuntimeDeclareType.PUBLIC && publicVariables != null) {
-					publicVariables.set(varName, stack.pop());
-				} else stack.pop();
-			case ByteInstruction.DECLARE_TYPED_MEMORY32:
-				var type:Int = reader.readInt8();
-                var varName:String = variableNames[reader.readInt32()];
-
-				if (type == ByteRuntimeDeclareType.STATIC && !StaticInterp.staticVariables.exists(varName)) {
-					StaticInterp.staticVariables.set(varName, stack.pop());
-				} else if (type == ByteRuntimeDeclareType.PUBLIC && publicVariables != null) {
-					publicVariables.set(varName, stack.pop());
-				} else stack.pop();
+			case ByteInstruction.DECLARE_MEMORY: declare(instruction_args[pointer], stack.pop());
+			case ByteInstruction.DECLARE_PUBLIC_MEMORY: 
+				if (publicVariables != null) publicVariables.set(variableNames[instruction_args[pointer]], stack.pop());
+				else stack.pop();
+			case ByteInstruction.DECLARE_STATIC_MEMORY: 
+                var varName:String = variableNames[instruction_args[pointer]];
+				if (!StaticInterp.staticVariables.exists(varName)) StaticInterp.staticVariables.set(varName, stack.pop());
+				else stack.pop();
 			
-			case ByteInstruction.PUSH_MEMORY8:
-				var index:Int = reader.readInt8();
-				stack.push(if (variablesDeclared[index]) variablesValues[index].r; else resolveGlobal(index));
-			case ByteInstruction.PUSH_MEMORY16:
-				var index:Int = reader.readInt16();
-				stack.push(if (variablesDeclared[index]) variablesValues[index].r; else resolveGlobal(index));
-			case ByteInstruction.PUSH_MEMORY32:
-				var index:Int = reader.readInt32();
+			case ByteInstruction.PUSH_MEMORY:
+				var index:Int = instruction_args[pointer];
 				stack.push(if (variablesDeclared[index]) variablesValues[index].r; else resolveGlobal(index));
 			
-			case ByteInstruction.SAVE_MEMORY8: assign(reader.readInt8(), stack.pop());
-			case ByteInstruction.SAVE_MEMORY16: assign(reader.readInt16(), stack.pop());
-			case ByteInstruction.SAVE_MEMORY32: assign(reader.readInt32(), stack.pop());
+			case ByteInstruction.SAVE_MEMORY: assign(instruction_args[pointer], stack.pop());
 
-			case ByteInstruction.GOTO: reader.position = reader.readInt32();
+			case ByteInstruction.GOTO: pointer = instruction_args[pointer];
 			case ByteInstruction.GOTOIF: 
-				var position:Int = reader.readInt32();
-				if (stack.pop() == true) reader.position = position;
+				var position:Int = instruction_args[pointer];
+				if (stack.pop() == true) pointer = position;
 			case ByteInstruction.GOTOIFNOT: 
-				var position:Int = reader.readInt32();
-				if (stack.pop() == false) reader.position = position;
+				var position:Int = instruction_args[pointer];
+				if (stack.pop() == false) pointer = position;
 
 			case ByteInstruction.CALL:
 				var args:Null<Dynamic> = stack.pop();
@@ -316,14 +273,8 @@ class ByteVM extends ScriptRuntime {
 
 				StaticInterp.setObjectField(obj, field, value);
 
-			case ByteInstruction.ARRAY_STACK8:
-				var arrayLength:Int = reader.readInt8();
-				stack.push(stack.splice(stack.length-arrayLength, arrayLength));
-			case ByteInstruction.ARRAY_STACK16:
-				var arrayLength:Int = reader.readInt16();
-				stack.push(stack.splice(stack.length-arrayLength, arrayLength));
-			case ByteInstruction.ARRAY_STACK32:
-				var arrayLength:Int = reader.readInt32();
+			case ByteInstruction.ARRAY_STACK:
+				var arrayLength:Int = instruction_args[pointer];
 				stack.push(stack.splice(stack.length-arrayLength, arrayLength));
 
 			case ByteInstruction.MAP_STACK:
@@ -342,7 +293,7 @@ class ByteVM extends ScriptRuntime {
 			case ByteInstruction.THROW:
 			case ByteInstruction.RETURN:
 			case ByteInstruction.ERROR:
-				var code:Int = reader.readInt8();
+				var code:Int = instruction_args[pointer];
 
 				switch (code) {
 					case ByteRuntimeError.INVALID_ASSIGN: throw error(EInvalidOp(Left(ASSIGN)));
