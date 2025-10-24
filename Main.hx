@@ -15,16 +15,15 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString('
-			for (i in 0...5) {
-				trace(i);
-				trace(i + 4);
-			}
+			var a = []; 
+			for (i in 0...1000) a.push(i * 2 + 1 / 6); 
+			if(true == true) a.push(1);
+			if(2 == true && true || false) a.push(1);
+			a[0];
 		');
 
-		var interp = new Interp("Main.hx");
-		interp.errorHandler = (error:Error) -> {Sys.println(error);}
-		interp.execute(expr);
-
+		trace(ExprUtils.print(expr, true));
+		expr = ConstEval.eval(expr);
 		trace(ExprUtils.print(expr, true));
 
 		var comp:ByteCompiler = new ByteCompiler();

@@ -16,11 +16,10 @@ class ConstEval {
         return new Expr(switch (expr.expr) {
             case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) eval(init) else null, isPublic, isStatic);
             case EParent(expr): EParent(eval(expr));
-            case EBlock(exprs): EBlock([for (expr in exprs) eval(expr)]);
+            case EBlock(exprs): EBlock([for (expr in exprs) eval(expr)].filter((expr:Expr) -> {return expr != null;}));
             case EField(expr, field, isSafe): EField(eval(expr), field, isSafe); 
             case EUnop(op, isPrefix, expr): EUnop(op, isPrefix, eval(expr));
             case ECall(func, args): ECall(eval(func), [for (expr in args) eval(expr)]);
-            case EIf(cond, thenExpr, elseExpr): EIf(eval(cond), eval(thenExpr), if (elseExpr != null) eval(elseExpr) else null);
             case EWhile(cond, body): EWhile(eval(cond), eval(body));
             case EFor(varName, iterator, body): EFor(varName, eval(iterator), eval(body));
             case EForKeyValue(key, value, iterator, body): EForKeyValue(key, value, eval(iterator), eval(body));
@@ -45,17 +44,35 @@ class ConstEval {
             case EMeta(name, args, expr): EMeta(name, [for (arg in args) eval(arg)], eval(expr));
             case EInfo(info, expr): EInfo(info, eval(expr));
             case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): expr.expr; 
+            case EIf(cond, thenExpr, elseExpr): 
+                var optimizedCond:Expr = eval(cond);
+                var condConst:LConst = exprToConst(optimizedCond);
+ 
+                if (condConst != null) 
+                    switch (condConst) {
+                        case LCBool(true):
+                            var body:Expr = eval(thenExpr);
+                            return switch (body.expr) {case EBlock(exprs) if (exprs.length == 1): exprs[0]; default: body;}
+                        default:
+                            var elseBody:Expr = if (elseExpr != null) eval(elseExpr) else null;
+                            return elseBody == null ? null : switch (elseBody.expr) {case EBlock(exprs) if (exprs.length == 1): exprs[0]; default: elseBody;}
+                    }
+
+                EIf(optimizedCond, eval(thenExpr), if (elseExpr != null) eval(elseExpr) else null);
             case EBinop(op, left, right):
-                var leftConst:LConst = exprToConst(eval(left));
-                var rightConst:LConst = exprToConst(eval(right));
-                if (leftConst != null && rightConst != null) {
+                var leftOptimized:Expr = eval(left);
+                var rightOptimized:Expr = eval(right);
+
+                var leftConst:LConst = exprToConst(leftOptimized);
+                var rightConst:LConst = exprToConst(rightOptimized);
+                if (leftConst != null && rightConst != null && !op.isAssign() && op != INTERVAL) {
                     var leftValue:Dynamic = StaticInterp.evaluateConst(leftConst);
                     var rightValue:Dynamic = StaticInterp.evaluateConst(rightConst);
 
-                    if (!op.isAssign()) 
-                        return new Expr(EConst(dynamicToConst(StaticInterp.evaluateBinop(op, leftValue, rightValue))), left.line);
+                    return new Expr(EConst(dynamicToConst(StaticInterp.evaluateBinop(op, leftValue, rightValue))), left.line);
                 }
-                expr.expr;
+
+                EBinop(op, leftOptimized, rightOptimized);
         }, expr.line);
     }
 
