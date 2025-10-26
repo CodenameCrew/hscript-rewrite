@@ -142,7 +142,6 @@ class ConstEval {
         }
     }
 
-
     // https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2
     public static function isPowerOf2(value:Int):Bool {
         return (value != 0) && ((value & (value - 1)) == 0);
