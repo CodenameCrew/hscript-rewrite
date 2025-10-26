@@ -35,9 +35,8 @@ private class IDeclaredVariable {
     public var oldValue:Dynamic;
 }
 
-class IVariableReference {
+typedef IVariableReference = {
     public var r:Dynamic;
-    public function new(r:Dynamic) {this.r = r;}
 }
 
 @:allow(hscript)
@@ -135,7 +134,7 @@ class ScriptRuntime {
     private function loadTables(info:VariableInfo) {
         variablesDeclared = new Vector<Bool>(info.length);
         variablesValues = new Vector<IVariableReference>(info.length);
-        for (i in 0...variablesValues.length) variablesValues[i] = new IVariableReference(null);
+        for (i in 0...variablesValues.length) variablesValues[i] = {r: null};
 
         variableNames = Vector.fromArrayCopy(info);
         variablesLookup = new StringMap<Int>();
@@ -164,7 +163,7 @@ class ScriptRuntime {
         });
         
         variablesDeclared[name] = true;
-        variablesValues[name] = new IVariableReference(value);
+        variablesValues[name] = {r: value};
 
         return value;
     }
@@ -184,7 +183,7 @@ class ScriptRuntime {
 
     private inline function assign(name:VariableType, value:Dynamic):Dynamic {
         variablesDeclared[name] = true;
-        variablesValues[name] = new IVariableReference(value);
+        variablesValues[name].r = value;
 
         return value;
     }
@@ -207,7 +206,7 @@ class ScriptRuntime {
                 variablesValues[name] = change.oldValue;
             } else {
                 variablesDeclared[name] = false;
-                variablesValues[name] = new IVariableReference(null);
+                variablesValues[name] = {r: null};
             }
         }
 	}
@@ -501,7 +500,7 @@ class Interp extends ScriptRuntime {
         for (arg in args) if (!arg.opt) argsNeeded++;
 
         var reflectiveFunction:Dynamic = null;
-        var functionRef:IVariableReference = null;
+        var functionRef:IVariableReference = {r: null};
         var interpFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
             if ((inputArgs == null ? 0 : inputArgs.length) < argsNeeded) {
                 error(ECustom(
@@ -562,7 +561,7 @@ class Interp extends ScriptRuntime {
         }
 
         reflectiveFunction = Reflect.makeVarArgs(interpFunction);
-        functionRef = new IVariableReference(reflectiveFunction);
+        functionRef.r = reflectiveFunction;
         if (name != -1) {
             if (depth == 0) {
                 var varName:String = variableNames[name];
