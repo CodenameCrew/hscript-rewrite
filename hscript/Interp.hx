@@ -503,11 +503,6 @@ class Interp extends ScriptRuntime {
         var functionRef:IVariableReference = {r: null};
         var interpFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
             if ((inputArgs == null ? 0 : inputArgs.length) < argsNeeded) {
-                error(ECustom(
-                    "Invalid number of parameters. Got " + inputArgs.length + ", required " + argsNeeded +
-                    (name != -1 ? " for function '" + variableNames[name] + "'" : "")
-                ), body.line);
-
                 var fixedArgs:Array<Dynamic> = [];
                 var extraArgs:Int = inputArgs.length - argsNeeded;
                 var position:Int = 0;
@@ -518,11 +513,16 @@ class Interp extends ScriptRuntime {
                             fixedArgs.push(inputArgs[position++]);
                             extraArgs--;
                         } else fixedArgs.push(null);
-                    } else fixedArgs.push(inputArgs[position++]);
+                    } 
+                    else fixedArgs.push(inputArgs[position++]);
                 }
 
                 inputArgs = fixedArgs;
             }
+
+            for (i => input in inputArgs)
+                if (input == null && args[i].value != null) 
+                    inputArgs[i] = interpExpr(args[i].value);
 
             var oldVariablesDeclared:Vector<Bool> = interpInstance.variablesDeclared;
             var oldVariablesValues:Vector<IVariableReference> = interpInstance.variablesValues;
