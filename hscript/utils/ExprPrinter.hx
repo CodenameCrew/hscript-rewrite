@@ -319,7 +319,6 @@ class ExprPrinter {
 						add(".*");
 					default:
 				}
-				add(";");
 			case EInfo(_, _):
 				add("<EInfo>");
 		}

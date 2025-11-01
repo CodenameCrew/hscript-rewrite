@@ -291,6 +291,9 @@ class Parser {
 
                 var expr:Expr = parseExpr();
                 return parseBinop(LexerOp.LEXER_TO_EXPR_OP.get(op), prev, expr);
+            case LTIdentifier(identifier) if (identifier == "is"):
+                var expr:Expr = parseExpr();
+                return parseBinop(ExprBinop.IS, prev, expr);
             case LTDot | LTQuestionDot:
                 var isSafe:Bool = readTokenInPlace() == LTQuestionDot;
                 var fieldName:String = switch (readToken()) {
