@@ -28,7 +28,6 @@ class ConstEval {
             case EArray(expr, index): EArray(eval(expr, vars), eval(index, vars));
             case EMapDecl(keys, values): EMapDecl([for (expr in keys) eval(expr, vars)], [for (expr in values) eval(expr, vars)]);
             case EArrayDecl(items): EArrayDecl([for (expr in items) eval(expr, vars)]);
-            case ENew(className, args): ENew(className, [for (expr in args) eval(expr, vars)]);
             case EThrow(expr): EThrow(eval(expr, vars));
             case ETry(expr, catchVar, catchExpr): ETry(eval(expr, vars), catchVar, eval(catchExpr, vars));
             case EObject(fields): EObject([for (field in fields) new ObjectField(field.name, eval(field.expr, vars))]);
@@ -41,6 +40,20 @@ class ConstEval {
             case EMeta(name, args, expr): EMeta(name, [for (arg in args) eval(arg, vars)], eval(expr, vars));
             case EInfo(info, expr): EInfo(info, eval(expr, info));
             case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): expr.expr; 
+            case ENew(className, args): 
+                var mapIndexes:Array<Int> = [
+                    vars.indexOf("StringMap"),
+                    vars.indexOf("IntMap"),
+                    vars.indexOf("EnumValueMap"),
+                    vars.indexOf("ObjectMap"),
+                    vars.indexOf("Map")
+                ];
+
+                for (mapIndex in mapIndexes)
+                    if (mapIndex != -1 && className == mapIndex)
+                        return new Expr(EMapDecl([], []), expr.line);
+
+                ENew(className, [for (expr in args) eval(expr, vars)]);
             case EUnop(op, isPrefix, expr):
                 var optimizedExpr:Expr = eval(expr, vars);
                 var exprConst:LConst = exprToConst(optimizedExpr);
@@ -266,38 +279,4 @@ class ConstEval {
             default: 0;
         }
     }
-
-    /**
-     * ! SCRAPPED BECAUSE I FORGOT HSCRIPT IS DYNAMIC
-     * 
-     * Turn a multi/div by a power of 2 into a bitshift.
-     * We can check both sides for mult for some reason I can't remb I learned it in 2nd grade??? -lunar
-     * 
-     * For example: a / 2 to a >> 1
-     * For example: a a * 2 into a << 1 
-    if (rightConst != null || leftConst != null) {
-        switch (op) {
-            case DIV:
-                var divInt:Int = constToInt(rightConst ?? LCInt(0));
-                if (isPowerOf2(divInt)) { 
-                    var divRoot:Int = Std.int(Math.pow(divInt, 1 / 2));
-                    if (divRoot <= SAFE_BITSHIFT_RANGE) return new Expr(EBinop(SHR, left, new Expr(EConst(LCInt(divRoot)), expr.line)), expr.line);
-                }
-            case MULT:
-                var multInt:Int = rightConst != null ? constToInt(rightConst) : constToInt(leftConst);
-                if (isPowerOf2(multInt)) {
-                    var multRoot:Int = Std.int(Math.pow(multInt, 1 / 2));
-                    if (multRoot <= SAFE_BITSHIFT_RANGE) return new Expr(EBinop(SHL, rightConst != null ? left : right, new Expr(EConst(LCInt(multRoot)), expr.line)), expr.line);
-                }
-            default:
-        }
-    }
-
-    public static final SAFE_BITSHIFT_RANGE:Int = 30; // safe zone for 32 bit signed ints 
-
-    // https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2
-    public static function isPowerOf2(value:Int):Bool {
-        return (value != 0) && ((value & (value - 1)) == 0);
-    }
-    */
 }

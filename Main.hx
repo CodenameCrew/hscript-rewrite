@@ -1,5 +1,7 @@
 package;
 
+import sys.io.File;
+import hscript.anaylzers.Inliner;
 import hscript.anaylzers.Unravel;
 import hscript.anaylzers.ConstEval;
 import hscript.Error;
@@ -11,17 +13,11 @@ using hscript.utils.ExprUtils;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString("
-			var a = 4;
-			var b = {field: 58};
-
-			trace('$a ${b.field}', Math.sin(a));
-			trace(Math.atan2(a, b.field));
-
-		");
+        var expr = parser.parseString(File.getContent("test.hx"));
 
 		expr = ConstEval.eval(expr);
 		expr = Unravel.eval(expr);
+		expr = Inliner.eval(expr);
 
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

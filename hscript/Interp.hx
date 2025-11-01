@@ -1,5 +1,6 @@
 package hscript;
 
+import haxe.ds.ObjectMap;
 import haxe.ds.Map;
 import haxe.ds.StringMap;
 import haxe.ds.Vector;
@@ -154,13 +155,12 @@ class ScriptRuntime {
         variables.set("Lambda", Lambda);
 
         variables.set("Json", haxe.Json);
-        variables.set("Map", haxe.ds.ObjectMap);
         variables.set("Base64", haxe.crypto.Base64);
         variables.set("Path", haxe.io.Path);
         variables.set("Timer", haxe.Timer);
         variables.set("EReg", EReg);
         variables.set("StringBuf", StringBuf);
-        variables.set("StringBuf", StringBuf);
+        // variables.set("Map", DynamicMap);
 
         #if sys 
         variables.set("Sys", Sys); 
@@ -288,7 +288,7 @@ class ScriptRuntime {
     }
 
     private inline function error(err:ErrorDef, ?line:Int):Dynamic {
-		throw new Error(err, null, null, this.fileName, line ?? this.lineNumber+1);
+		throw new Error(err, null, null, this.fileName, line ?? this.lineNumber);
         return null;
 	}
 }
@@ -975,6 +975,8 @@ class StaticInterp {
 	}
 
     public static inline function interpMap(keys:Array<Dynamic>, values:Array<Dynamic>):Dynamic {
+        if (keys.length == 0 && values.length == 0) return new haxe.ds.Map<Dynamic, Dynamic>();
+
         // https://github.com/HaxeFoundation/hscript/blob/master/hscript/Interp.hx#L655-L664
         var isAllString:Bool = true;
 		var isAllInt:Bool = true;
@@ -1004,9 +1006,20 @@ class StaticInterp {
 }
 
 /**
+ * Same description as InterpLocalsImpl, allows array access variables["a"].
+ */
+@:forward abstract InterpLocals(InterpLocalsImpl) {
+	public function new(parent:ScriptRuntime)
+		this = new InterpLocalsImpl(parent);
+
+    @:arrayAccess public function arrayGet(key:String):Dynamic return this.get(key);
+    @:arrayAccess public function arraySet(key:String, value:Dynamic) this.set(key, value);
+}
+
+/**
  * Interface to set locals inside a interp. See resolve() function to see what counts as local.
  */
-class InterpLocals {
+class InterpLocalsImpl {
     /**
      * Defaults are used to load variables before the interps variable vectors have loaded
      * 

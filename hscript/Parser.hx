@@ -563,16 +563,7 @@ class Parser {
                 if (maybe(LTOp(FUNCTION_ARROW))) identifier += FUNCTION_ARROW + parseType(); // Type->Void
                 return identifier;
             case LTOpenCB:
-                while (true) {
-                    switch (readToken()) {
-                        case LTIdentifier(identifier):
-                            ensure(LTColon);
-                            parseType();
-                        case LTComma:
-                        case LTCloseCB: break;
-                        default: unexpected(); break;
-                    }
-                }
+                parseStructureType();
                 return null;
             default:
                 unexpected();
@@ -619,8 +610,22 @@ class Parser {
                                 line : tokenPos.line
                             });
                     }
+                case LTOpenCB: parseStructureType();
                 default: 
                     expected(LTOp(GT));
+            }
+        }
+    }
+
+    private inline function parseStructureType() {
+        while (true) {
+            switch (readToken()) {
+                case LTIdentifier(identifier):
+                    ensure(LTColon);
+                    parseType();
+                case LTComma:
+                case LTCloseCB: break;
+                default: unexpected(); break;
             }
         }
     }
@@ -1029,6 +1034,6 @@ class Parser {
 
     private function error(err:ErrorDef) {
         var currentToken:LTokenPos = readPosition();
-		throw new Error(err, currentToken.min, currentToken.max, fileName, currentToken.line+1);
+		throw new Error(err, currentToken.min, currentToken.max, fileName, currentToken.line);
 	}
 }

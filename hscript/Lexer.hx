@@ -267,7 +267,7 @@ class Lexer {
     private var charCode:Int = -1;
     private var tokenMin:Int = 0;
     private var tokenMax:Int = 0;
-    private var line:Int = 0;
+    private var line:Int = 1;
 
     private var input:String = null;
     private var tokens:Array<LTokenPos> = [];
@@ -296,7 +296,7 @@ class Lexer {
         this.charCode = -1;
         this.tokenMin = 0;
         this.tokenMax = 0;
-        this.line = 0;
+        this.line = 1;
 
         this.input = null;
         this.tokens.resize(0);
@@ -680,7 +680,7 @@ class Lexer {
     }
 
     private inline function error(err:ErrorDef, pmin:Int, pmax:Int) {
-		throw new Error(err, pmin, pmax, fileName, line+1);
+		throw new Error(err, pmin, pmax, fileName, line);
 	}
 
     /**
