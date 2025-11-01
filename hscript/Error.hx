@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Lexer.LToken;
 import hscript.Ast.ExprUnop;
 import hscript.Ast.ExprBinop;
 import haxe.ds.Either;
@@ -22,7 +23,7 @@ class Error {
 	public function toString():String {
 		var message:String = switch( this.e ) {
 			case EInvalidChar(c): "Invalid character: '"+(StringTools.isEof(c) ? "EOF" : String.fromCharCode(c))+"' ("+c+")";
-			case EUnexpected(s , expected): (expected != null ? 'Unexpected token: have $s, want $expected' : "Unexpected token: \""+s+"\"");
+			case EUnexpected(s , expected): (expected != null ? 'Unexpected token: have ${Lexer.tokenToString(s)}, want ${Lexer.tokenToString(expected)}' : 'Unexpected token: ${Lexer.tokenToString(s)}');
 			case EUnterminatedString: "Unterminated string";
 			case EUnterminatedComment: "Unterminated comment";
 			case EInvalidPreprocessor(str): "Invalid preprocessor (" + str + ")";
@@ -42,7 +43,7 @@ class Error {
 
 enum ErrorDef {
 	EInvalidChar( c : Int );
-	EUnexpected( s : String , ? expected : String );
+	EUnexpected( s : LToken , ? expected : LToken );
 	EUnterminatedString;
 	EUnterminatedComment;
 	EInvalidPreprocessor( msg : String );

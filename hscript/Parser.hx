@@ -1023,12 +1023,12 @@ class Parser {
     }
 
     private function expected(want:LToken) {
-		error(EUnexpected(Std.string(readTokenInPlace()), Std.string(want)));
+		error(EUnexpected(readTokenInPlace(), want));
         return null;
 	}
 
     private function unexpected():Null<Dynamic> {
-		error(EUnexpected(Std.string(readTokenInPlace())));
+		error(EUnexpected(readTokenInPlace()));
         return null;
 	}
 

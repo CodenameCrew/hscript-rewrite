@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.Interp.StaticInterp;
 import hscript.Ast.ExprUnop;
 import hscript.Ast.ExprBinop;
 import hscript.Error.ErrorDef;
@@ -704,5 +705,33 @@ class Lexer {
 
         lexer = null;
         return output;
+    }
+
+    public static function tokenToString(ltoken:LToken):String {
+        return switch (ltoken) {
+            case LTOpenP: "(";
+            case LTCloseP: ")";
+            case LTOpenBr: "[";
+            case LTCloseBr: "]";
+            case LTOpenCB: "{";
+            case LTCloseCB: "}";
+            case LTComma: ",";
+            case LTDot: ".";
+            case LTColon: ":";
+            case LTSemiColon: ";";
+            case LTQuestion: "?";
+            case LTQuestionDot: "?.";
+            case LTDollar: "$";
+
+            case LTOp(op): return op;
+            case LTKeyWord(keyword): return Std.string(keyword);
+            case LTIdentifier(identifier): return identifier;
+            case LTConst(const): return Std.string(StaticInterp.evaluateConst(const));
+
+            case LTMeta(meta): '@:$meta';
+            case LTPrepro(prepro): '#if $prepro';
+
+            case LTEof: "EOF";
+        }
     }
 }
