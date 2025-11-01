@@ -12,17 +12,16 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString("
-			Math.sin(3);
-			var a = Math.pow(2, 2);
-			Math.PI;
-		");
+			var a = 4;
+			var b = {field: 58};
 
-		trace(expr.print());
+			trace('$a ${b.field}', Math.sin(a));
+			trace(Math.atan2(a, b.field));
+
+		");
 
 		expr = ConstEval.eval(expr);
 		expr = Unravel.eval(expr);
-
-		trace(expr.print());
 
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

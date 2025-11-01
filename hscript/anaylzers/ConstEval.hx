@@ -217,6 +217,7 @@ class ConstEval {
                             case [LCFloat(v1), LCFloat(v2)]:
                                 var evalExpr:Expr = twoArgMathEval(v1, v2);
                                 if (evalExpr != null) return evalExpr;
+                            case [null] | [null, null]:
                             default:
                         }
                     default:

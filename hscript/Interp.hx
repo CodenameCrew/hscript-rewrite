@@ -1,5 +1,6 @@
 package hscript;
 
+import haxe.ds.Map;
 import haxe.ds.StringMap;
 import haxe.ds.Vector;
 import hscript.Ast.VariableInfo;
@@ -142,7 +143,31 @@ class ScriptRuntime {
     }
 
     private function loadBaseVariables() {
+        // Set as many base variables as you want!! Will not stay in memory after the program is loaded!!! -lunar
         variables.set("Std", Std);
+        variables.set("Math", Math);
+        variables.set("Reflect", Reflect);
+        variables.set("StringTools", StringTools);
+        variables.set("Xml", Xml);
+        variables.set("Type", Type);
+        variables.set("Date", Date);
+        variables.set("Lambda", Lambda);
+
+        variables.set("Json", haxe.Json);
+        variables.set("Map", haxe.ds.ObjectMap);
+        variables.set("Base64", haxe.crypto.Base64);
+        variables.set("Path", haxe.io.Path);
+        variables.set("Timer", haxe.Timer);
+        variables.set("EReg", EReg);
+        variables.set("StringBuf", StringBuf);
+        variables.set("StringBuf", StringBuf);
+
+        #if sys 
+        variables.set("Sys", Sys); 
+        variables.set("File", sys.io.File);
+        variables.set("FileSystem", sys.FileSystem);
+        #end
+
         variables.set("trace", Reflect.makeVarArgs(function (vals:Array<Dynamic>) {
             var info:PosInfos = cast {
                 lineNumber: this.lineNumber,
