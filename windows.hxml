@@ -1,6 +1,0 @@
-build.hxml
---define windows
-
---cpp bin/cpp
---cmd cd bin/cpp
---cmd Main.exe

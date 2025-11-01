@@ -1,6 +1,0 @@
-build.hxml
---define mac
-
---cpp bin/cpp
---cmd cd bin/cpp
---cmd ./Main
