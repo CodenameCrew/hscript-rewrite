@@ -244,7 +244,7 @@ enum LConst {
  */
 class Lexer {
     public static final IDENTIFIER_CHARS:String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_";
-    public static final OPERATOR_CHARS:String = "+*/-=!><&|^%~";
+    public static final OPERATOR_CHARS:String = "+*/-=!><&|^%~is";
 
     public static final IDENTIFIER_CHARS_LOOKUP:Array<Bool> = {
         var LOOKUP_ARRAY:Array<Bool> = [];

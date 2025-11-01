@@ -13,11 +13,11 @@ using hscript.utils.ExprUtils;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString(File.getContent("test.hx"));
+        var expr = parser.parseString("var t = 4 is Int; trace(t);");
 
-		expr = ConstEval.eval(expr);
-		expr = Unravel.eval(expr);
-		expr = Inliner.eval(expr);
+		// expr = ConstEval.eval(expr);
+		// expr = Unravel.eval(expr);
+		// expr = Inliner.eval(expr);
 
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

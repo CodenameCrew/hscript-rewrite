@@ -160,7 +160,12 @@ class ScriptRuntime {
         variables.set("Timer", haxe.Timer);
         variables.set("EReg", EReg);
         variables.set("StringBuf", StringBuf);
-        // variables.set("Map", DynamicMap);
+
+        variables.set("Int", Int);
+        variables.set("Float", Float);
+        variables.set("Bool", Bool);
+        variables.set("String", String);
+        variables.set("Array", Array);
 
         #if sys 
         variables.set("Sys", Sys); 
