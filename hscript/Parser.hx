@@ -310,6 +310,19 @@ class Parser {
                 ensure(LTColon);
                 var elseExpr:Expr = parseExpr();
                 return create(ETernary(prev, thenExpr, elseExpr));
+            case LTDollar: // '$a' '${b.field}'
+                var bracketed:Bool = maybe(LTOpenCB);
+                var body:Expr = parseNextExpr(parseExpr());
+                body = stringifyExpr(body); // Std.string(body);
+                if (bracketed) ensure(LTCloseCB);
+
+                var next:Expr = parseNextExpr(parseExpr());
+                var first:Expr = create(EBinop(ADD, prev, body));
+
+                if (prev.expr.match(EConst(LCString("")))) first = body; // "" + a -> a
+                if (next.expr.match(EConst(LCString("")))) return first; // a + "" -> a
+                
+                return parseNextExpr(create(EBinop(ADD, first, next)));
             default:
                 reverseToken();
                 return prev;
@@ -906,6 +919,10 @@ class Parser {
         }
 
         return parseNextExpr(create(EObject(fields)));
+    }
+
+    private function stringifyExpr(expr:Expr):Expr {
+        return create(ECall(create(EField(create(EIdent(variableID("Std"))), "string", false)), [expr]));
     }
 
     private function parseBlock(exprs:Array<Expr>) {

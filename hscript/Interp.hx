@@ -142,6 +142,7 @@ class ScriptRuntime {
     }
 
     private function loadBaseVariables() {
+        variables.set("Std", Std);
         variables.set("trace", Reflect.makeVarArgs(function (vals:Array<Dynamic>) {
             var info:PosInfos = cast {
                 lineNumber: this.lineNumber,

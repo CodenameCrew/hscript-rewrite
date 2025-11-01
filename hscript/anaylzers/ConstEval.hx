@@ -12,8 +12,6 @@ using hscript.utils.ExprUtils;
 using hscript.Ast.ExprBinop;
 
 class ConstEval {
-    public static final SAFE_BITSHIFT_RANGE:Int = 30; // safe zone for 32 bit signed ints 
-
     public static function eval(expr:Expr):Expr {
         return new Expr(switch (expr.expr) {
             case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) eval(init) else null, isPublic, isStatic);
@@ -141,6 +139,8 @@ class ConstEval {
             default: 0;
         }
     }
+
+    public static final SAFE_BITSHIFT_RANGE:Int = 30; // safe zone for 32 bit signed ints 
 
     // https://stackoverflow.com/questions/600293/how-to-check-if-a-number-is-a-power-of-2
     public static function isPowerOf2(value:Int):Bool {

@@ -25,6 +25,7 @@ enum LToken {
     LTSemiColon; // ;
     LTQuestion; // ?
     LTQuestionDot; // ?.
+    LTDollar; // $
 
     LTOp(op:LexerOp);
     LTKeyWord(keyword:LKeyword);
@@ -435,7 +436,8 @@ class Lexer {
                         default: character--;
                     }
                     return LTQuestion;
-                case "'".code, '"'.code: return LTConst(LCString(readString(charCode)));
+                case '"'.code: return LTConst(LCString(readString(charCode, false)));
+                case "'".code: return LTConst(LCString(readString(charCode, true)));
                 case '='.code:
                     charCode = readCharacter();
                     if (charCode == '='.code) return LTOp(EQ);
@@ -528,16 +530,22 @@ class Lexer {
         });
 	}
 
-    private inline function readString(untilCharCode:Int) {
-		var c:Int = 0;
-		var b:StringBuf = new StringBuf();
+    private function readString(untilCharCode:Int, allowStringInterpolation:Bool):String {
+		var buffer:StringBuf = new StringBuf();
 		var esc:Bool = false;
 		var oldLine:Int = line;
 
 		var start:Int = character - 1;
 		while (true) {
-			var c:Int = readCharacter();
-			if (StringTools.isEof(c)) {
+			var charCode:Int = -1;
+            if (this.charCode < 0)
+                charCode = readCharacter();
+            else {
+                charCode = this.charCode;
+                this.charCode = -1;
+            }
+
+			if (StringTools.isEof(charCode)) {
 				error(EUnterminatedString, start, start);
 				line = oldLine;
 				break;
@@ -545,12 +553,12 @@ class Lexer {
 
 			if (esc) {
 				esc = false;
-				switch (c) {
-                    case 'n'.code: b.addChar('\n'.code);
-                    case 'r'.code: b.addChar('\r'.code);
-                    case 't'.code: b.addChar('\t'.code);
-                    case "'".code, '"'.code, '\\'.code: b.addChar(c);
-                    case '/'.code: b.addChar(c);
+				switch (charCode) {
+                    case 'n'.code: buffer.addChar('\n'.code);
+                    case 'r'.code: buffer.addChar('\r'.code);
+                    case 't'.code: buffer.addChar('\t'.code);
+                    case "'".code, '"'.code, '\\'.code: buffer.addChar(charCode);
+                    case '/'.code: buffer.addChar(charCode);
                     case "u".code: // hexadecimal parsing
                         var k:Int = 0;
                         for(i in 0...4) {
@@ -568,19 +576,54 @@ class Lexer {
                                     invalidChar(char);
                                 }
                         }
-                        b.addChar(k);
-				    default: invalidChar(c);
+                        buffer.addChar(k);
+				    default: invalidChar(charCode);
 				}
-			} else if (c == '\\'.code)
+			} else if (charCode == '\\'.code)
 				esc = true;
-			else if (c == untilCharCode)
+			else if (allowStringInterpolation && charCode == "$".code) { // https://haxe.org/manual/lf-string-interpolation.html
+                charCode = readCharacter();
+
+                if (charCode == "$".code) { // $$ -> $
+                    buffer.addChar(charCode);
+                    continue;
+                }
+
+                if (charCode != "{".code && !IDENTIFIER_CHARS_LOOKUP[charCode]) { // $a123_ is valid $., is not
+                    buffer.addChar("$".code);
+                    if (charCode == untilCharCode) break; // '   $' <- prevent continued reading and error 
+                    buffer.addChar(charCode);
+                    continue;
+                }
+
+                push(LTConst(LCString(buffer.toString()))); // assembled like a binop "" + expr + ""
+                push(LTDollar);
+
+                if (charCode == "{".code) {
+                    push(LTOpenCB);
+
+                    var ltoken:LToken = token();
+                    push(ltoken);
+
+                    while (ltoken != LTCloseCB) {
+                        ltoken = token();
+                        push(ltoken);
+                    }
+                } else {
+                    this.charCode = charCode;
+                    push(token());
+                }
+
+                buffer = new StringBuf();
+                continue;
+            } else if (charCode == untilCharCode)
 				break;
 			else {
-				if (c == "\n".code) line++;
-				b.addChar(c);
+				if (charCode == "\n".code) line++;
+				buffer.addChar(charCode);
 			}
 		}
-		return b.toString();
+		return buffer.toString();
 	}
 
     private inline function comment(op:String, charCode:Int) {

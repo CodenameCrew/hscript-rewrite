@@ -10,14 +10,14 @@ using hscript.utils.ExprUtils;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString('
-			function test(a:Int = 2, b:Int = 3)
-				trace(a == null, a, b);
+        var expr = parser.parseString("
+			var a = 4;
+			var b = ['field' => 58];
 
-			test(null, 7);
-		');
+			trace('${(a == 38 ? '${b['field']}' : '$a')}');
+			trace(\"${(a == 38 ? '${b['field']}' : '$a')}\");
+		");
 
-		expr = ConstEval.eval(expr);
 
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}
