@@ -1,5 +1,6 @@
 package;
 
+import hscript.anaylzers.Unravel;
 import hscript.anaylzers.ConstEval;
 import hscript.Error;
 import hscript.Interp;
@@ -11,13 +12,17 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString("
-			var a = 4;
-			var b = ['field' => 58];
-
-			trace('${(a == 38 ? '${b['field']}' : '$a')}');
-			trace(\"${(a == 38 ? '${b['field']}' : '$a')}\");
+			Math.sin(3);
+			var a = Math.pow(2, 2);
+			Math.PI;
 		");
 
+		trace(expr.print());
+
+		expr = ConstEval.eval(expr);
+		expr = Unravel.eval(expr);
+
+		trace(expr.print());
 
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

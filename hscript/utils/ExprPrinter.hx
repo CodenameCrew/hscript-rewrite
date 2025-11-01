@@ -212,7 +212,6 @@ class ExprPrinter {
 					add(" ");
 					printExpr(e);
 				}
-				add(";");
 			case EArray(e, index):
 				printExpr(e);
 				add("[");
