@@ -33,12 +33,14 @@ using hscript.utils.ExprUtils;
 		if (shouldUnravel) expr = Unravel.eval(expr);
 		if (shouldInline) expr = Inliner.eval(expr);
 
-        @:nullSafety(Off) expr = expr.map((expr:Null<Expr>) -> {
-            switch (expr.expr) {
-                case EEmpty: null;
-                default: expr;
-            }
-        });
+        @:nullSafety(Off) {
+            expr = expr.map((expr:Null<Expr>) -> {
+                switch (expr.expr) {
+                    case EEmpty: null;
+                    default: expr;
+                }
+            });
+        }
 
         return expr;
     }

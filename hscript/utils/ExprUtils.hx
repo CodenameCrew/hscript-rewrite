@@ -5,15 +5,15 @@ import hscript.Ast.ObjectField;
 import hscript.Ast.Argument;
 import hscript.Ast.Expr;
 
-class ExprUtils {
+@:nullSafety(Strict) class ExprUtils {
     /**
      * Helper to iterate through the whole Ast tree recurrively.
      * @param expr 
      * @param iter 
      */
-    public static function iterate(expr:Expr, iter:Expr->Void) {
-        iter(expr);
-        switch (expr.expr) {
+    public static function iterate(expr:Null<Expr>, iter:Expr->Void) {
+        if (expr != null) iter(expr);
+        if (expr != null && expr.expr != null) switch (expr.expr) {
             case EVar(name, init, isPublic, isStatic): if (init != null) iterate(init, iter);
             case EParent(expr): iterate(expr, iter);
             case EBlock(exprs): for (expr in exprs) iterate(expr, iter);
@@ -48,8 +48,8 @@ class ExprUtils {
      * @param expr 
      * @param iter Return false to stop going deeper, return true to keep going.
      */
-    public static function transverse(expr:Expr, iter:Expr->Bool) {
-        if (!iter(expr)) return;
+    public static function transverse(expr:Null<Expr>, iter:Expr->Bool) {
+        if (expr == null || !iter(expr)) return;
         switch (expr.expr) {
             case EVar(name, init, isPublic, isStatic): if (init != null) transverse(init, iter);
             case EParent(expr): transverse(expr, iter);
@@ -80,9 +80,9 @@ class ExprUtils {
         }
     }
 
-    public static function map(expr:Expr, iter:Expr->Expr):Expr {
-        var result:Expr = iter(expr);
-        if (result == null) return null;
+    public static function map(expr:Null<Expr>, iter:Null<Expr>->Null<Expr>):Expr {
+        var result:Null<Expr> = expr != null ? iter(expr) : null;
+        if (result == null) return new Expr(EEmpty, 0);
         return new Expr(switch (result.expr) {
             case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) map(init, iter) else null, isPublic, isStatic);
             case EParent(expr): EParent(map(expr, iter));
@@ -126,7 +126,7 @@ class ExprUtils {
      * @return String
      */
     public static function print(e:Expr, pretty:Bool = true):String {
-		var printer:ExprPrinter = new ExprPrinter(pretty ? "\t" : null);
+		var printer:Null<ExprPrinter> = new ExprPrinter(pretty ? "\t" : null);
 		var output:String = printer.exprToString(e);
 
 		printer = null;
