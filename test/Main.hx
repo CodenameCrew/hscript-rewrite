@@ -23,12 +23,5 @@ class Main {
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}
 		interp.execute(expr);
-
-		if (interp.variables.exists("onUpdate")) {
-			var func:Dynamic = interp.variables.get("onUpdate");
-			
-			func();
-			trace(Reflect.callMethod(null, func, [7]), Reflect.callMethod(null, func, []), Reflect.isFunction(func));
-		}
     }
 }
