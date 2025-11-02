@@ -187,7 +187,7 @@ class ScriptRuntime {
     }
 
     private inline function declare(name:VariableType, value:Dynamic):Dynamic {
-        changes.push({
+        if (depth != 0) changes.push({
             name: name,
             oldDeclared: variablesDeclared[name],
             oldValue: variablesValues[name]
@@ -200,7 +200,7 @@ class ScriptRuntime {
     }
 
     private inline function declareReferenced(name:VariableType, ref:IVariableReference):Dynamic {
-        changes.push({
+        if (depth != 0) changes.push({
             name: name,
             oldDeclared: variablesDeclared[name],
             oldValue: variablesValues[name]
@@ -336,7 +336,10 @@ class Interp extends ScriptRuntime {
                 return null;
             case EBinop(op, left, right): 
                 switch (op) {
-                    case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN | NCOAL_ASSIGN: assignExprOp(op, left, right);
+                    case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN: assignExprOp(op, left, right);
+                    case NCOAL_ASSIGN: 
+                        trace(left.expr, right.expr);
+                        assignExprOp(op, left, right);
                     case ASSIGN: assignExpr(left, right);
 
                     case ADD: return interpExpr(left) + interpExpr(right);
@@ -533,7 +536,7 @@ class Interp extends ScriptRuntime {
 
         var reflectiveFunction:Dynamic = null;
         var functionRef:IVariableReference = {r: null};
-        var interpFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
+        var staticFunction:Dynamic = function (inputArgs:Array<Dynamic>) {
             if ((inputArgs == null ? 0 : inputArgs.length) < argsNeeded) {
                 var fixedArgs:Array<Dynamic> = [];
                 var extraArgs:Int = inputArgs.length - argsNeeded;
@@ -592,7 +595,7 @@ class Interp extends ScriptRuntime {
             return ret;
         }
 
-        reflectiveFunction = Reflect.makeVarArgs(interpFunction);
+        reflectiveFunction = Reflect.makeVarArgs(staticFunction);
         functionRef.r = reflectiveFunction;
         if (name != -1) {
             if (depth == 0) {
@@ -606,7 +609,7 @@ class Interp extends ScriptRuntime {
                     return reflectiveFunction;
                 }
             }
-            declare(name, reflectiveFunction);
+            declareReferenced(name, functionRef);
         }
         return reflectiveFunction;
     }

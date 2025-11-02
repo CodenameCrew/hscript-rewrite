@@ -88,7 +88,7 @@ class Parser {
             case LTOpenP:
                 if (maybe(LTCloseP)) { // empty args lambda () -> {}
                     deepEnsure(LTOp(FUNCTION_ARROW));
-                    var expr:Expr = parseExpr();
+                    var expr:Expr = functionExpr(parseExpr());
                     return create(EFunction([], expr, -1, false, false));
                 }
 
@@ -100,7 +100,7 @@ class Parser {
 
                     deepEnsure(LTOp(FUNCTION_ARROW));
 
-                    var expr:Expr = parseExpr();
+                    var expr:Expr = functionExpr(parseExpr());
                     return create(EFunction(args, expr, -1, false, false));
                 }
                 
@@ -151,7 +151,7 @@ class Parser {
                 var isObject:Bool = false;
 
                 switch (nextToken) {
-                    case LTCloseCB: return parseNextExpr(create(EObject(null))); // {} empty oject
+                    case LTCloseCB: return parseNextExpr(create(EObject([]))); // {} empty oject
                     case LTIdentifier(_) | LTConst(LCString(_)): // {var: AND {"var":
                         var peekToken:LToken = peekToken();
                         if (peekToken == LTColon) isObject = true;
@@ -275,7 +275,7 @@ class Parser {
                 if (op == FUNCTION_ARROW) { // single arg reinterpretation of `f -> e` , `(f) -> e`
                     switch (prev.expr) {
                         case EIdent(name), EParent(_.expr => EIdent(name)):
-                            var expr:Expr = parseExpr();
+                            var expr:Expr = functionExpr(parseExpr());
                             return create(EFunction([], expr, -1, false, false));
                         default: unexpected();
                     }
@@ -404,7 +404,7 @@ class Parser {
                 var args:Array<Argument> = parseFunctionArgs();
                 if(maybe(LTColon)) parseType(); // function ():Type
 
-                var expr:Expr = parseExpr();
+                var expr:Expr = functionExpr(parseExpr());
                 create(EFunction(args, expr, variableID(functionName), publicModifier, staticModifier));
             case RETURN:
                 create(EReturn(peekToken() == LTSemiColon ? null : parseExpr()));
@@ -927,6 +927,13 @@ class Parser {
         }
 
         return parseNextExpr(create(EObject(fields)));
+    }
+
+    private function functionExpr(expr:Expr):Expr {
+        return switch (expr.expr) {
+            case EObject([]): return new Expr(EBlock([]), expr.line);
+            default: expr;
+        }
     }
 
     private function stringifyExpr(expr:Expr):Expr {
