@@ -673,8 +673,6 @@ class Parser {
                 default: 
                     reverseToken();
                     parseBlock(active ? exprs : null);
-                    maybe(LTSemiColon);
-                    trace(ExprUtils.print(new Expr(EInfo(variablesList,new Expr(EBlock(exprs),0)), 0)));
             }
         }
     }
