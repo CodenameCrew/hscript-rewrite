@@ -13,13 +13,14 @@ using hscript.utils.ExprUtils;
 class Main {
     public static function main() {
         var parser = new Parser();
-        var expr = parser.parseString("import haxe.Json; var t = 4 is Int; trace(t);");
+		parser.preprocesorValues.set("cpp", true);
+        var expr = parser.parseString("
+		#if cpp
+			trace(2);
+		#end
+		");
 
-		expr = ConstEval.eval(expr);
-		expr = Unravel.eval(expr);
-		expr = Inliner.eval(expr);
-
-		trace(expr.print());
+		trace(hscript.anaylzers.Analyzer.optimize(expr).print());
 
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}

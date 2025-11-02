@@ -443,6 +443,7 @@ class Interp extends ScriptRuntime {
                 if (importValue == null) error(EInvalidClass(path), expr.line);
                 return importValue;
             case EInfo(info, _): error(ECustom("Invalid EInfo()"), expr.line);
+            case EEmpty: null;
         }
     }
 

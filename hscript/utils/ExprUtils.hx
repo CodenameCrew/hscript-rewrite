@@ -39,7 +39,7 @@ class ExprUtils {
             case EDoWhile(cond, body): iterate(cond, iter); iterate(body, iter);
             case EMeta(name, args, expr): for (arg in args) {iterate(arg, iter);} iterate(expr, iter);
             case EInfo(info, expr): iterate(expr, iter);
-            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): // Cause compilier error if these arent updated along with Ast.hx -lunar
+            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty: // Cause compilier error if these arent updated along with Ast.hx -lunar
         }
     }
 
@@ -76,7 +76,7 @@ class ExprUtils {
             case EDoWhile(cond, body): transverse(cond, iter); transverse(body, iter);
             case EMeta(name, args, expr): for (arg in args) {transverse(arg, iter);} transverse(expr, iter);
             case EInfo(info, expr): transverse(expr, iter);
-            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_):
+            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty:
         }
     }
 
@@ -115,7 +115,7 @@ class ExprUtils {
             case EDoWhile(cond, body): EDoWhile(map(cond, iter), map(body, iter));
             case EMeta(name, args, expr): EMeta(name, [for (arg in args) map(arg, iter)], map(expr, iter));
             case EInfo(info, expr): EInfo(info, map(expr, iter));
-            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): result.expr; 
+            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty: result.expr; 
         }, result.line);
     }
 

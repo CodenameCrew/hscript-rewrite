@@ -7,7 +7,7 @@ import hscript.Ast.Expr;
 
 using hscript.utils.ExprUtils;
 
-class Unravel {
+@:nullSafety(Strict) class Unravel {
     public static final SAFE_FOR_UNLOOP:Int = 128;
 
     public static function eval(expr:Expr):Expr {
@@ -35,7 +35,8 @@ class Unravel {
                     var declaresVariables:Bool = false;
                     expr.iterate((expr:Expr) -> {
                         switch (expr.expr) {
-                            case EVar(_, _, isPublic, isStatic) | EFunction(_, _, _, isPublic, isStatic): if (!isPublic && !isStatic) declaresVariables = true;
+                            case EVar(_, _, isPublic, isStatic) | EFunction(_, _, _, isPublic, isStatic): 
+                                if ((isPublic == null ? true : !isPublic) && (isStatic == null ? true : !isStatic)) declaresVariables = true;
                             case EImport(path, mode): declaresVariables = true;
                             default: // does not declare any variables in the current scope, safe!
                         }
@@ -99,11 +100,15 @@ class Unravel {
             case EDoWhile(cond, body): EDoWhile(eval(cond), eval(body));
             case EMeta(name, args, expr): EMeta(name, [for (arg in args) eval(arg)], eval(expr));
             case EInfo(info, expr): EInfo(info, eval(expr));
-            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): expr.expr; 
+            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty: expr.expr; 
             case EUnop(op, isPrefix, expr): EUnop(op, isPrefix, eval(expr));
             case EIf(cond, thenExpr, elseExpr): EIf(eval(cond), eval(thenExpr), elseExpr != null ? eval(elseExpr) : null);
             case ETernary(cond, thenExpr, elseExpr): ETernary(eval(cond), eval(thenExpr), eval(elseExpr));
             case EBinop(op, left, right): EBinop(op, eval(left), eval(right));
         }, expr.line);
+    }
+
+    public static inline function guarantee(expr:Null<Expr>):Expr {
+        return expr != null ? expr : new Expr(EEmpty, 0);
     }
 }

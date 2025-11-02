@@ -8,7 +8,7 @@ import hscript.Ast.Expr;
 
 using hscript.utils.ExprUtils;
 
-class Inliner {
+@:nullSafety(Strict) class Inliner {
     public static function eval(expr:Expr, vars:VariableInfo = null):Expr {
         return new Expr(switch (expr.expr) {
             case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) eval(init, vars) else null, isPublic, isStatic);
@@ -38,11 +38,15 @@ class Inliner {
             case EDoWhile(cond, body): EDoWhile(eval(cond, vars), eval(body, vars));
             case EMeta(name, args, expr): EMeta(name, [for (arg in args) eval(arg, vars)], eval(expr, vars));
             case EInfo(info, expr): EInfo(info, eval(expr, info));
-            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_): expr.expr; 
+            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty: expr.expr; 
             case EUnop(op, isPrefix, expr): EUnop(op, isPrefix, eval(expr, vars));
             case EIf(cond, thenExpr, elseExpr): EIf(eval(cond, vars), eval(thenExpr, vars), elseExpr != null ? eval(elseExpr, vars) : null);
             case ETernary(cond, thenExpr, elseExpr): ETernary(eval(cond, vars), eval(thenExpr, vars), eval(elseExpr, vars));
             case EBinop(op, left, right): EBinop(op, eval(left, vars), eval(right, vars));
         }, expr.line);
+    }
+
+    public static inline function guarantee(expr:Null<Expr>):Expr {
+        return expr != null ? expr : new Expr(EEmpty, 0);
     }
 }

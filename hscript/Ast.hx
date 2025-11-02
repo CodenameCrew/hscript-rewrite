@@ -60,7 +60,9 @@ enum ExprDef {
     EDoWhile(cond:Expr, body:Expr);
     EMeta(name:String, args:Array<Expr>, expr:Expr);
     EImport(path:String, mode:EImportMode);
+    
     EInfo(info:VariableInfo, expr:Expr);
+    EEmpty;
 }
 
 class Argument {
