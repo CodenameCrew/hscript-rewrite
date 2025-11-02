@@ -1,5 +1,6 @@
 package hscript;
 
+import hscript.utils.ExprUtils;
 import hscript.Interp.StaticInterp;
 import haxe.ds.StringMap;
 import hscript.Ast.Expr;
@@ -663,19 +664,19 @@ class Parser {
     }
 
     private function parsePreprocessBlock(exprs:Array<Expr>, active:Bool) {
-        var oldVariablesListSize:Int = variablesList.length; // same as parsePreprocessCond
         while (true) {
             switch (readToken()) {
                 case LTPrepro("else"): parsePreprocessBlock(exprs, !active); break;
-                case LTPrepro("elseif"): parsePreprocessBlock(exprs, parsePreprocessCond(active)); break;
+                case LTPrepro("elseif"): parsePreprocessBlock(exprs, parsePreprocessCond(!active)); break;
                 case LTPrepro("end"): break;
                 case LTEof: error(EInvalidPreprocessor("Unclosed preprocessor")); break;
                 default: 
-                    reverseToken(); // reverse test token
+                    reverseToken();
                     parseBlock(active ? exprs : null);
+                    maybe(LTSemiColon);
+                    trace(ExprUtils.print(new Expr(EInfo(variablesList,new Expr(EBlock(exprs),0)), 0)));
             }
         }
-        if (!active) variablesList.resize(oldVariablesListSize);
     }
 
     /**
@@ -734,7 +735,7 @@ class Parser {
      */
     private function evalPreprocessCond(expr:Expr):Dynamic {
         return switch (expr.expr) {
-            case EIdent(name): preprocesorValues.get(variablesList[name]);
+            case EIdent(name): preprocesorValues.exists(variablesList[name]) ? preprocesorValues.get(variablesList[name]) : false;
             case EConst(const): StaticInterp.evaluateConst(const);
             case EParent(expr): evalPreprocessCond(expr);
             case EBinop(op, left, right): StaticInterp.evaluateBinop(op, evalPreprocessCond(left), evalPreprocessCond(right));

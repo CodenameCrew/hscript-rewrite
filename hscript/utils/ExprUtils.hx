@@ -116,7 +116,7 @@ import hscript.Ast.Expr;
             case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty: expr.expr; 
         }, expr.line) else null;
 
-        var result:Null<Expr> = expr != null ? iter(expr) : null;
+        var result:Null<Expr> = iter != null && mappedExpr != null && mappedExpr.expr != null ? iter(mappedExpr) : null;
         return result;
     }
 
