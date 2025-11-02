@@ -12,7 +12,7 @@ using hscript.utils.ExprUtils;
 
         expr.iterate((expr:Null<Expr>) -> {
             if (expr != null && expr.expr != null) switch (expr.expr) {
-                case EMeta("analyzer", args, _): 
+                case EMeta(":analyzer", args, _): 
                     for (i in args) {
                         switch (i.expr) {
                             case EConst(LCString(string)):
@@ -26,6 +26,8 @@ using hscript.utils.ExprUtils;
                 default:
             }
         });
+
+        trace(shouldOptimize);
 
         if (!shouldOptimize) return expr;
 

@@ -14,22 +14,7 @@ class Main {
         var parser = new Parser();
         parser.preprocesorValues.set("desktop", true);
         var expr = parser.parseString("
-function adjustShit() {
-    final options = Options.customOptions.get(parentContentPack);
-    if(options.get(\"customMenus\")) {
-        final state = FlxG.state;
-        if(state is PlayState) {
-            var restingWidth:Int = 0;
-            #if mobile
-            restingWidth = Math.floor(FlxG.stage.stageWidth / (FlxG.stage.stageHeight / Constants.GAME_HEIGHT));
-            #else
-            restingWidth = Constants.GAME_WIDTH;
-            #end
-        }
-    }
-}
-
-
+            @:analyzer(none) trace(baabn);
 		");
 
 		expr = Analyzer.optimize(expr);

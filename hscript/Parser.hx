@@ -258,8 +258,27 @@ class Parser {
             case LTConst(const): return parseNextExpr(create(EConst(const)));
             case LTMeta(meta):
                 var args:Array<Expr> = null;
-                if (maybe(LTOpenP)) args = parseParentheses();
+                if (maybe(LTOpenP)) {
+                    if (maybe(LTCloseP)) args = [];
+                    else {
+                        args = [];
 
+                        while (true) {
+                            trace(args);
+                            switch (readToken()) {
+                                case LTIdentifier(identifier): args.push(create(EConst(LCString(identifier))));
+                                case LTConst(const): args.push(create(EConst(const)));
+                                default: unexpected(); break;
+                            }
+
+                            switch (readToken()) {
+                                case LTComma:
+                                case LTCloseP: break;
+                                default: unexpected(); break;
+                            }
+                        }
+                    }
+                }
                 var expr:Expr = parseExpr();
 
                 return create(EMeta(meta, args, expr));
