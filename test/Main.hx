@@ -15,15 +15,20 @@ class Main {
         var parser = new Parser();
 		parser.preprocesorValues.set("cpp", true);
         var expr = parser.parseString("
-		#if cpp
-			trace(2);
-		#end
+		function test(a:Int, b:Int) {
+			trace(a);
+			return a + b;
+		}
 		");
-
-		trace(hscript.anaylzers.Analyzer.optimize(expr).print());
 
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}
 		interp.execute(expr);
+
+		if (interp.variables.exists("test")) {
+			var func:Dynamic = interp.variables.get("test");
+			trace(func(2, 4));
+			trace(Reflect.callMethod(null, func, [7, 7]));
+		}
     }
 }

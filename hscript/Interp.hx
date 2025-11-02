@@ -1062,7 +1062,7 @@ class InterpLocalsImpl {
         } else {
 		    if (parent.variablesLookup != null && parent.variablesLookup.exists(key)) {
                 var varID:Int = parent.variablesLookup.get(key);
-                return parent.variablesDeclared[varID] ? parent.variablesValues[varID] : null; 
+                return parent.variablesDeclared[varID] ? parent.variablesValues[varID].r : null; 
             } else 
                 return null;
         }
