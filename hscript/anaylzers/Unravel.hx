@@ -8,7 +8,7 @@ import hscript.Ast.Expr;
 using hscript.utils.ExprUtils;
 
 @:nullSafety(Strict) class Unravel {
-    public static final SAFE_FOR_UNLOOP:Int = 128;
+    public static final SAFE_FOR_UNLOOP:Int = 16;
 
     public static function eval(expr:Expr):Expr {
         return new Expr(switch (expr.expr) {
