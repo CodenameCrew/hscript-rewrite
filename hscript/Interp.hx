@@ -527,8 +527,8 @@ class Interp extends ScriptRuntime {
     } 
 
     private function interpFunction(args:Array<Argument>, body:Expr, name:VariableType, ?isPublic:Bool, ?isStatic:Bool) {
-        var capturedVariablesDeclared:Vector<Bool> = duplicate(variablesDeclared);
-        var capturedVariablesValues:Vector<IVariableReference> = duplicate(variablesValues);
+        var capturedVariablesDeclared:Vector<Bool> = depth > 0 ? duplicate(variablesDeclared) : variablesDeclared;
+        var capturedVariablesValues:Vector<IVariableReference> = depth > 0 ? duplicate(variablesValues) : variablesValues;
 
         var interpInstance:Interp = this;
 

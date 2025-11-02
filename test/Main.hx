@@ -13,8 +13,15 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString("
-			var a = 2;
-			trace(a ??= 34);
+			function nut() {sack();}
+			function sack() {
+				function b() {trace('b');}
+				trace('nutsack');
+				b();
+			}
+
+			nut();
+			b();
 		");
 
 		expr = Analyzer.optimize(expr);
