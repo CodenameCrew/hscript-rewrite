@@ -338,8 +338,9 @@ class Interp extends ScriptRuntime {
                 switch (op) {
                     case ADD_ASSIGN | SUB_ASSIGN | MULT_ASSIGN | DIV_ASSIGN | MOD_ASSIGN | SHL_ASSIGN | SHR_ASSIGN | USHR_ASSIGN | OR_ASSIGN | AND_ASSIGN | XOR_ASSIGN: assignExprOp(op, left, right);
                     case NCOAL_ASSIGN: 
-                        trace(left.expr, right.expr);
-                        assignExprOp(op, left, right);
+                        var leftValue:Dynamic = interpExpr(left);
+                        if (leftValue == null) assignExpr(left, right);
+                        else leftValue;
                     case ASSIGN: assignExpr(left, right);
 
                     case ADD: return interpExpr(left) + interpExpr(right);

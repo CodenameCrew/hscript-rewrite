@@ -13,17 +13,8 @@ class Main {
     public static function main() {
         var parser = new Parser();
         var expr = parser.parseString("
-			function test(dt) {}
-			function onUpdat2(dt) {
-				function b() {trace('apple');}
-				trace(dt);
-				return dt;
-			}
-				b();
-			function onUpdate(dt) {
-				trace(dt);
-				return dt;
-			}
+			var a = 2;
+			trace(a ??= 34);
 		");
 
 		expr = Analyzer.optimize(expr);
