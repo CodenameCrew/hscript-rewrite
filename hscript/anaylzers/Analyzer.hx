@@ -27,8 +27,6 @@ using hscript.utils.ExprUtils;
             }
         });
 
-        trace(shouldOptimize);
-
         if (!shouldOptimize) return expr;
 
         if (shouldConstEval) expr = ConstEval.eval(expr);
