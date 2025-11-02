@@ -691,7 +691,9 @@ class Parser {
                 case LTEof: error(EInvalidPreprocessor("Unclosed preprocessor")); break;
                 default: 
                     reverseToken();
+                    var oldVariablesListSize:Int = variablesList.length;
                     parseBlock(active ? exprs : null);
+                    if (!active) variablesList.resize(oldVariablesListSize);
             }
         }
     }

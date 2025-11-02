@@ -14,7 +14,12 @@ class Main {
         var parser = new Parser();
         parser.preprocesorValues.set("desktop", true);
         var expr = parser.parseString("
-            @:analyzer(none) trace(baabn);
+            #if true
+            var a = 33;
+            #else
+            var b = 2;
+            #end
+            trace(c);
 		");
 
 		expr = Analyzer.optimize(expr);
