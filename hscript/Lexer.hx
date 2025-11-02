@@ -195,9 +195,9 @@ enum abstract LKeyword(String) from String {
     var FOR:LKeyword = "for";
     var FUNCTION:LKeyword = "function";
     var IF:LKeyword = "if";
-    var IMPORT:LKeyword = "import";
+    var HIMPORT:LKeyword = "import"; // HIMPORT to prevent conflicts with lua libs
     var IN:LKeyword = "in";
-    var INLINE:LKeyword = "inline";
+    var HINLINE:LKeyword = "inline"; // HINLINE to prevent conflicts with lua libs
     var NEW:LKeyword = "new";
     var NULL:LKeyword = "null";
     var OVERRIDE:LKeyword = "override";
@@ -215,7 +215,7 @@ enum abstract LKeyword(String) from String {
 
     public static final ALL_KEYWORDS:Array<LKeyword> = [
         AS, BREAK, CASE, CAST, CATCH, CONTINUE, DEFAULT, DO, ELSE,
-        FALSE, FINAL, FOR, FUNCTION, IF, IMPORT, IN, INLINE,
+        FALSE, FINAL, FOR, FUNCTION, IF, HIMPORT, IN, HINLINE,
         NEW, NULL, OVERRIDE, PRIVATE, PUBLIC, RETURN, STATIC, 
         SWITCH, THIS, THROW, TRUE, TRY, VAR, WHILE
     ];

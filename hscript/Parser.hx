@@ -389,7 +389,7 @@ class Parser {
             case BREAK: create(EBreak);
             case CONTINUE: create(EContinue);
             case ELSE: unexpected(); // Handled in "if" keyword parsing
-            case INLINE:
+            case HINLINE:
                 deepEnsure(LTKeyWord(FUNCTION));
                 parseKeyword(FUNCTION);
             case FUNCTION:
@@ -520,7 +520,7 @@ class Parser {
                     case LTKeyWord(FINAL): parseKeyword(FINAL);
                     default: unexpected();
                 }
-            case IMPORT:
+            case HIMPORT:
                 var mode:EImportMode = Normal;
                 var identifiers:Array<String> = [];
                 identifiers.push(parseIdent());
