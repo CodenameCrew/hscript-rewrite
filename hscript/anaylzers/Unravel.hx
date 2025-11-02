@@ -66,11 +66,11 @@ using hscript.utils.ExprUtils;
                         if (rightInt > leftInt && rightInt-leftInt <= SAFE_FOR_UNLOOP) { // don't mess with it unless its valid
                             var unrolledLoops:Array<Expr> = [];
                             for (i in leftInt...rightInt) {
-                                var newBody:Expr = optimizedBody.map((bodyExpr:Expr) -> {
-                                    return new Expr(switch (bodyExpr.expr) {
+                                var newBody:Expr = optimizedBody.map((bodyExpr:Null<Expr>) -> {
+                                    return if (bodyExpr != null && bodyExpr.expr != null) new Expr(switch (bodyExpr.expr) {
                                         case EIdent(name) if (name == varName): EConst(LCInt(i));
                                         default: bodyExpr.expr;
-                                    }, bodyExpr.line);
+                                    }, bodyExpr.line) else null;
                                 });
                                 unrolledLoops.push(eval(newBody));
                             }

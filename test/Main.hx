@@ -1,5 +1,7 @@
 package;
 
+import hscript.anaylzers.Inliner;
+import hscript.anaylzers.Unravel;
 import hscript.Error;
 import hscript.Interp;
 import hscript.Parser;
@@ -16,9 +18,12 @@ class Main {
 			}
 		");
 
+		expr = Inliner.eval(expr);
+
 		var interp:Interp = new Interp("Main.hx");
 		interp.errorHandler = (error:Error) -> {Sys.println(error);}
 		interp.execute(expr);
+
 
 		if (interp.variables.exists("test")) {
 			var func:Dynamic = interp.variables.get("test");
