@@ -80,10 +80,8 @@ import hscript.Ast.Expr;
         }
     }
 
-    public static function map(expr:Null<Expr>, iter:Null<Expr>->Null<Expr>):Expr {
-        var result:Null<Expr> = expr != null ? iter(expr) : null;
-        if (result == null) return new Expr(EEmpty, 0);
-        return new Expr(switch (result.expr) {
+    @:nullSafety(Off) public static function map(expr:Null<Expr>, iter:Null<Expr>->Null<Expr>):Null<Expr> {
+        var mappedExpr:Expr = if (expr != null && expr.expr != null) new Expr(switch (expr.expr) {
             case EVar(name, init, isPublic, isStatic): EVar(name, if (init != null) map(init, iter) else null, isPublic, isStatic);
             case EParent(expr): EParent(map(expr, iter));
             case EBlock(exprs): EBlock([for (expr in exprs) map(expr, iter)]);
@@ -115,8 +113,11 @@ import hscript.Ast.Expr;
             case EDoWhile(cond, body): EDoWhile(map(cond, iter), map(body, iter));
             case EMeta(name, args, expr): EMeta(name, [for (arg in args) map(arg, iter)], map(expr, iter));
             case EInfo(info, expr): EInfo(info, map(expr, iter));
-            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty: result.expr; 
-        }, result.line);
+            case EBreak | EConst(_) | EContinue | EIdent(_) | EImport(_) | EEmpty: expr.expr; 
+        }, expr.line) else null;
+
+        var result:Null<Expr> = expr != null ? iter(expr) : null;
+        return result;
     }
 
     /**

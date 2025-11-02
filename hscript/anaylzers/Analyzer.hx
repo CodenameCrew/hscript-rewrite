@@ -36,6 +36,7 @@ using hscript.utils.ExprUtils;
         @:nullSafety(Off) {
             expr = expr.map((expr:Null<Expr>) -> {
                 switch (expr.expr) {
+                    case EBlock(exprs): new Expr(EBlock(exprs.filter((expr:Expr) -> {return !expr.expr.match(EEmpty);})), expr.line);
                     case EEmpty: null;
                     default: expr;
                 }
