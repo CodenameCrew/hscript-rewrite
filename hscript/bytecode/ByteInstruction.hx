@@ -1,7 +1,5 @@
 package hscript.bytecode;
 
-typedef ByteInt = Int;
-
 @:structInit
 class ByteChunk {
 	public var instructions:Array<ByteInstruction> = [];
@@ -10,12 +8,12 @@ class ByteChunk {
 	public var constants:Array<Dynamic> = [];
 }
 
-enum abstract ByteInstruction(ByteInt) from Int to Int {
+enum abstract ByteInstruction(Int) from Int to Int {
 	/**
 	 * FOLLOWED BY 1 ARGS -
 	 * Pushes the following bytes encoded as a Int to the top of the stack.
 	 */
-	var PUSH_CONST:ByteInstruction = 0;
+	var PUSH_CONST:ByteInstruction = 0x00;
 
 	/**
 	 * FOLLOWED BY 0 ARGS -
@@ -438,7 +436,7 @@ enum abstract ByteInstruction(ByteInt) from Int to Int {
 	var ERROR:ByteInstruction;
 }
 
-enum abstract ByteRuntimeError(ByteInt) from ByteInt from Int to ByteInt to Int {
+enum abstract ByteRuntimeError(Int) from Int to Int {
 	/**
 	 * Throws a hscript error: EInvalidOp(Left(ASSIGN)).
 	 */
@@ -460,7 +458,7 @@ enum abstract ByteRuntimeError(ByteInt) from ByteInt from Int to ByteInt to Int 
 	var INVALID_ITERATOR:ByteRuntimeError;
 }
 
-enum abstract ByteRuntimeDeclareType(ByteInt) from ByteInt from Int to ByteInt to Int {
+enum abstract ByteRuntimeDeclareType(Int) from Int to Int {
 	/**
 	 * Points to the ScriptRuntime's variableValues.
 	 */

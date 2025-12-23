@@ -3,16 +3,6 @@ package hscript;
 import hscript.Lexer.LexerOp;
 import hscript.Lexer.LConst;
 
-#if cpp
-typedef UInt8 = cpp.UInt8;
-#elseif cs
-typedef UInt8 = cs.StdTypes.UInt8;
-#elseif java
-typedef UInt8 = java.types.UInt8;
-#else
-typedef UInt8 = UInt; // fallback for JS, Python, etc.
-#end
-
 class Expr {
 	public var expr:ExprDef;
 	public var line:Int;
@@ -101,7 +91,7 @@ class ObjectField {
  * Derived from haxe manual:
  * https://haxe.org/manual/expression-operators-binops.html
  */
-enum abstract ExprBinop(UInt8) {
+enum abstract ExprBinop(Int) {
     var ADD:ExprBinop; // +
     var SUB:ExprBinop; // -
     var MULT:ExprBinop; // *
@@ -252,7 +242,7 @@ enum abstract ExprBinop(UInt8) {
  * Derived from haxe manual:
  * https://haxe.org/manual/expression-operators-unops.html
  */
-enum abstract ExprUnop(UInt8) {
+enum abstract ExprUnop(Int) {
     var NEG_BIT:ExprUnop; // ~
 
     var NOT:ExprUnop; // !
